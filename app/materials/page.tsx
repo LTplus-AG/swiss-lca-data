@@ -1,5 +1,5 @@
-import MaterialsTable from "../pages/materials-table";
+import { MaterialsTableComponent } from "../pages/materials-table";
 
 export default function MaterialsPage() {
-  return <MaterialsTable />;
+  return <MaterialsTableComponent />;
 }

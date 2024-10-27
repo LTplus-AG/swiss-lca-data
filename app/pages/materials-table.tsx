@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useMemo } from "react"
+import React, { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -8,27 +8,27 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, Search, SlidersHorizontal } from "lucide-react"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
 
 // Custom MultiSelect component
 const MultiSelect = ({ options, value, onChange, placeholder }) => {
@@ -47,9 +47,9 @@ const MultiSelect = ({ options, value, onChange, placeholder }) => {
             checked={value.includes(option.value)}
             onCheckedChange={(checked) => {
               if (checked) {
-                onChange([...value, option.value])
+                onChange([...value, option.value]);
               } else {
-                onChange(value.filter((item) => item !== option.value))
+                onChange(value.filter((item) => item !== option.value));
               }
             }}
           >
@@ -58,8 +58,8 @@ const MultiSelect = ({ options, value, onChange, placeholder }) => {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
+  );
+};
 
 // Mock data (replace with actual API call in a real application)
 const mockData = [
@@ -127,16 +127,19 @@ const mockData = [
     ghgDisposal: 0.095,
     nameFr: "Panneau de particules, colle UF, enduit, zone sèche",
   },
-]
+];
 
 type SortConfig = {
-  key: string
-  direction: "ascending" | "descending"
-}
+  key: string;
+  direction: "ascending" | "descending";
+};
 
 export function MaterialsTableComponent() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "id", direction: "ascending" })
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "id",
+    direction: "ascending",
+  });
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     "id",
     "name",
@@ -144,16 +147,16 @@ export function MaterialsTableComponent() {
     "density",
     "ubpTotal",
     "ghgTotal",
-  ])
-  const [groupByMaterial, setGroupByMaterial] = useState(false)
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
-  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
-  const [maxValues, setMaxValues] = useState<Record<string, number>>({})
-  const [filterOption, setFilterOption] = useState("material")
+  ]);
+  const [groupByMaterial, setGroupByMaterial] = useState(false);
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([]);
+  const [maxValues, setMaxValues] = useState<Record<string, number>>({});
+  const [filterOption, setFilterOption] = useState("material");
 
   const materialGroups = useMemo(() => {
-    return Array.from(new Set(mockData.map(item => item.group)))
-  }, [])
+    return Array.from(new Set(mockData.map((item) => item.group)));
+  }, []);
 
   const indicatorOptions = [
     { label: "UBP Total", value: "ubpTotal" },
@@ -162,53 +165,61 @@ export function MaterialsTableComponent() {
     { label: "GHG Total", value: "ghgTotal" },
     { label: "GHG Production", value: "ghgProduction" },
     { label: "GHG Disposal", value: "ghgDisposal" },
-  ]
+  ];
 
   const initialMaxValues = useMemo(() => {
     return indicatorOptions.reduce((acc, { value }) => {
-      acc[value] = Math.max(...mockData.map(item => item[value]))
-      return acc
-    }, {} as Record<string, number>)
-  }, [])
+      acc[value] = Math.max(...mockData.map((item) => item[value]));
+      return acc;
+    }, {} as Record<string, number>);
+  }, []);
 
   const sortedData = useMemo(() => {
-    const sortableData = [...mockData]
+    const sortableData = [...mockData];
     if (sortConfig.key) {
       sortableData.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === "ascending" ? -1 : 1
+          return sortConfig.direction === "ascending" ? -1 : 1;
         }
         if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === "ascending" ? 1 : -1
+          return sortConfig.direction === "ascending" ? 1 : -1;
         }
-        return 0
-      })
+        return 0;
+      });
     }
-    return sortableData
-  }, [mockData, sortConfig])
+    return sortableData;
+  }, [mockData, sortConfig]);
 
   const filteredData = useMemo(() => {
-    return sortedData.filter((item) =>
-      (filterOption === "material" ? selectedMaterials.length === 0 || selectedMaterials.includes(item.group) : true) &&
-      (filterOption === "indicator" ? Object.entries(maxValues).every(([key, value]) => item[key] <= value) : true) &&
-      Object.values(item).some(
-        (value) =>
-          typeof value === "string" &&
-          value.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    )
-  }, [sortedData, searchTerm, selectedMaterials, maxValues, filterOption])
+    return sortedData.filter(
+      (item) =>
+        (filterOption === "material"
+          ? selectedMaterials.length === 0 ||
+            selectedMaterials.includes(item.group)
+          : true) &&
+        (filterOption === "indicator"
+          ? Object.entries(maxValues).every(
+              ([key, value]) => item[key] <= value
+            )
+          : true) &&
+        Object.values(item).some(
+          (value) =>
+            typeof value === "string" &&
+            value.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    );
+  }, [sortedData, searchTerm, selectedMaterials, maxValues, filterOption]);
 
   const groupedData = useMemo(() => {
-    if (!groupByMaterial) return { "": filteredData }
+    if (!groupByMaterial) return { "": filteredData };
     return filteredData.reduce((acc, item) => {
       if (!acc[item.group]) {
-        acc[item.group] = []
+        acc[item.group] = [];
       }
-      acc[item.group].push(item)
-      return acc
-    }, {})
-  }, [filteredData, groupByMaterial])
+      acc[item.group].push(item);
+      return acc;
+    }, {});
+  }, [filteredData, groupByMaterial]);
 
   const handleSort = (key: string) => {
     setSortConfig((prevConfig) => ({
@@ -217,20 +228,20 @@ export function MaterialsTableComponent() {
         prevConfig.key === key && prevConfig.direction === "ascending"
           ? "descending"
           : "ascending",
-    }))
-  }
+    }));
+  };
 
   const toggleColumn = (column: string) => {
     setVisibleColumns((prev) =>
       prev.includes(column)
         ? prev.filter((col) => col !== column)
         : [...prev, column]
-    )
-  }
+    );
+  };
 
   const updateMaxValues = (indicator: string, value: number) => {
-    setMaxValues((prev) => ({ ...prev, [indicator]: value }))
-  }
+    setMaxValues((prev) => ({ ...prev, [indicator]: value }));
+  };
 
   const columns = [
     { key: "id", label: "ID" },
@@ -245,7 +256,7 @@ export function MaterialsTableComponent() {
     { key: "ghgTotal", label: "GHG Total" },
     { key: "ghgProduction", label: "GHG Production" },
     { key: "ghgDisposal", label: "GHG Disposal" },
-  ]
+  ];
 
   return (
     <div className="container mx-auto py-10">
@@ -257,7 +268,9 @@ export function MaterialsTableComponent() {
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
-              <Label htmlFor="search" className="mb-2 block">Search</Label>
+              <Label htmlFor="search" className="mb-2 block">
+                Search
+              </Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -270,10 +283,16 @@ export function MaterialsTableComponent() {
               </div>
             </div>
             <div>
-              <Label htmlFor="tableOptions" className="mb-2 block">Table Options</Label>
+              <Label htmlFor="tableOptions" className="mb-2 block">
+                Table Options
+              </Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button id="tableOptions" variant="outline" className="w-full">
+                  <Button
+                    id="tableOptions"
+                    variant="outline"
+                    className="w-full"
+                  >
                     <SlidersHorizontal className="mr-2 h-4 w-4" />
                     Columns
                   </Button>
@@ -300,7 +319,9 @@ export function MaterialsTableComponent() {
                       <Checkbox
                         id="groupByMaterial"
                         checked={groupByMaterial}
-                        onCheckedChange={() => setGroupByMaterial(!groupByMaterial)}
+                        onCheckedChange={() =>
+                          setGroupByMaterial(!groupByMaterial)
+                        }
                       />
                       <Label htmlFor="groupByMaterial">Group by Material</Label>
                     </div>
@@ -313,7 +334,11 @@ export function MaterialsTableComponent() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <RadioGroup defaultValue="material" onValueChange={setFilterOption} className="flex space-x-4">
+                    <RadioGroup
+                      defaultValue="material"
+                      onValueChange={setFilterOption}
+                      className="flex space-x-4"
+                    >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="material" id="material" />
                         <Label htmlFor="material">Material</Label>
@@ -325,7 +350,9 @@ export function MaterialsTableComponent() {
                     </RadioGroup>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Choose to filter by material type or by indicator values</p>
+                    <p>
+                      Choose to filter by material type or by indicator values
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -333,9 +360,14 @@ export function MaterialsTableComponent() {
           </div>
           {filterOption === "material" && (
             <div>
-              <Label htmlFor="materialFilter" className="mb-2 block">Filter by Material</Label>
+              <Label htmlFor="materialFilter" className="mb-2 block">
+                Filter by Material
+              </Label>
               <MultiSelect
-                options={materialGroups.map(group => ({ label: group, value: group }))}
+                options={materialGroups.map((group) => ({
+                  label: group,
+                  value: group,
+                }))}
                 value={selectedMaterials}
                 onChange={setSelectedMaterials}
                 placeholder="Select materials"
@@ -345,7 +377,9 @@ export function MaterialsTableComponent() {
           {filterOption === "indicator" && (
             <>
               <div>
-                <Label htmlFor="indicatorSelect" className="mb-2 block">Select Indicators to Limit</Label>
+                <Label htmlFor="indicatorSelect" className="mb-2 block">
+                  Select Indicators to Limit
+                </Label>
                 <MultiSelect
                   id="indicatorSelect"
                   options={indicatorOptions}
@@ -354,16 +388,22 @@ export function MaterialsTableComponent() {
                   placeholder="Select indicators"
                 />
               </div>
-              
+
               {selectedIndicators.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2">
                   {selectedIndicators.map((indicator) => {
-                    const max = initialMaxValues[indicator]
-                    const currentMax = maxValues[indicator] ?? max
+                    const max = initialMaxValues[indicator];
+                    const currentMax = maxValues[indicator] ?? max;
                     return (
                       <div key={indicator}>
                         <Label htmlFor={indicator} className="mb-2 block">
-                          Max {indicatorOptions.find(opt => opt.value === indicator)?.label}: {currentMax.toFixed(2)}
+                          Max{" "}
+                          {
+                            indicatorOptions.find(
+                              (opt) => opt.value === indicator
+                            )?.label
+                          }
+                          : {currentMax.toFixed(2)}
                         </Label>
                         <Slider
                           id={indicator}
@@ -371,10 +411,12 @@ export function MaterialsTableComponent() {
                           max={max}
                           step={max / 100}
                           value={[currentMax]}
-                          onValueChange={(value) => updateMaxValues(indicator, value[0])}
+                          onValueChange={(value) =>
+                            updateMaxValues(indicator, value[0])
+                          }
                         />
                       </div>
-                    )
+                    );
                   })}
                 </div>
               )}
@@ -416,7 +458,10 @@ export function MaterialsTableComponent() {
                   <React.Fragment key={group}>
                     {groupByMaterial && (
                       <TableRow>
-                        <TableCell colSpan={visibleColumns.length + 1} className="font-bold bg-muted">
+                        <TableCell
+                          colSpan={visibleColumns.length + 1}
+                          className="font-bold bg-muted"
+                        >
                           {group}
                         </TableCell>
                       </TableRow>
@@ -442,5 +487,5 @@ export function MaterialsTableComponent() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

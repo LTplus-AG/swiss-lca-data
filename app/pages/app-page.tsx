@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,23 +14,14 @@ import {
 } from "@/components/ui/card";
 import {
   Search,
-  Database,
   FileSpreadsheet,
   BarChart3,
   Settings,
   User,
   Globe,
-  Code,
   AlertTriangle,
+  Code,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"; // Remove the 'app' from the path
 import {
   Dialog,
   DialogContent,
@@ -52,6 +44,7 @@ import { cn } from "@/lib/utils";
 export default function MainAppPage() {
   const [language, setLanguage] = useState("en");
   const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const hasVisited = localStorage.getItem("hasVisitedBefore");
@@ -85,48 +78,18 @@ export default function MainAppPage() {
               <SelectItem value="it">Italiano</SelectItem>
             </SelectContent>
           </Select>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-                <span className="sr-only">Settings</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Settings</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <Link href="/settings/general">General</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link href="/settings/notifications">Notifications</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link href="/settings/privacy">Privacy</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-                <span className="sr-only">User account</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Account</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <Link href="/account/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link href="/account/preferences">Preferences</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Link href="/auth/logout">Log out</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link href="/settings">
+            <Button variant="ghost" size="icon">
+              <Settings className="h-5 w-5" />
+              <span className="sr-only">Settings</span>
+            </Button>
+          </Link>
+          <Link href="/profile">
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
+              <span className="sr-only">User account</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -162,28 +125,6 @@ export default function MainAppPage() {
           <CardFooter>
             <Link href="/materials">
               <Button>Explore Materials</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Database className="mr-2 h-4 w-4" />
-              Data Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>
-              Efficiently manage and update material data, including
-              environmental impact information. Keep your database current with
-              the latest sustainability metrics and ensure data accuracy for
-              your projects.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Link href="/data-management">
-              <Button>Manage Data</Button>
             </Link>
           </CardFooter>
         </Card>
@@ -231,24 +172,6 @@ export default function MainAppPage() {
             </Link>
           </CardFooter>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>API Access</CardTitle>
-            <CardDescription>Access our data programmatically</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p>Integrate KBOB data into your applications with our API.</p>
-          </CardContent>
-          <CardFooter>
-            <Link href="/api-access">
-              <Button>
-                <Code className="mr-2 h-4 w-4" />
-                Explore API
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
       </div>
 
       <div className="mt-12 bg-secondary p-6 rounded-lg">
@@ -263,7 +186,7 @@ export default function MainAppPage() {
           software solutions.
         </p>
         <Link href="/api-access">
-          <Button>Get API Key</Button>
+          <Button>Get Access</Button>
         </Link>
       </div>
 
@@ -294,10 +217,6 @@ export default function MainAppPage() {
               <li>
                 Performance optimizations and user interface improvements for a
                 smoother experience
-              </li>
-              <li>
-                Introduced API access for programmatic data retrieval and
-                integration
               </li>
             </ul>
           </CardContent>

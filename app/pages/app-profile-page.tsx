@@ -1,41 +1,86 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { User, Clock, Settings, Pencil } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { User, Clock, Settings, Pencil } from "lucide-react";
 
-export function Page() {
+export function Page({ defaultTab = "info" }) {
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [profileInfo, setProfileInfo] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    role: 'Architect',
-    company: 'Eco Architects Inc.',
-    location: 'Zurich, Switzerland',
-  })
+    name: "John Doe",
+    email: "john.doe@example.com",
+    role: "Architect",
+    company: "Eco Architects Inc.",
+    location: "Zurich, Switzerland",
+  });
 
   const [activityHistory] = useState([
-    { date: '2023-05-15', action: 'Updated material data for concrete', type: 'Data Update' },
-    { date: '2023-05-10', action: 'Exported BIM data for Project X', type: 'Export' },
-    { date: '2023-05-05', action: 'Added new material: Recycled Steel', type: 'New Material' },
-    { date: '2023-04-28', action: 'Updated profile information', type: 'Profile Update' },
-    { date: '2023-04-20', action: 'Completed sustainability assessment for Project Y', type: 'Assessment' },
-  ])
+    {
+      date: "2023-05-15",
+      action: "Updated material data for concrete",
+      type: "Data Update",
+    },
+    {
+      date: "2023-05-10",
+      action: "Exported BIM data for Project X",
+      type: "Export",
+    },
+    {
+      date: "2023-05-05",
+      action: "Added new material: Recycled Steel",
+      type: "New Material",
+    },
+    {
+      date: "2023-04-28",
+      action: "Updated profile information",
+      type: "Profile Update",
+    },
+    {
+      date: "2023-04-20",
+      action: "Completed sustainability assessment for Project Y",
+      type: "Assessment",
+    },
+  ]);
 
   const handleProfileChange = (key: string, value: string) => {
-    setProfileInfo(prev => ({ ...prev, [key]: value }))
-  }
+    setProfileInfo((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleAvatarChange = () => {
     // In a real application, this would open a file picker and handle the upload
-    console.log('Changing avatar')
-  }
+    console.log("Changing avatar");
+  };
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -56,11 +101,17 @@ export function Page() {
         </div>
         <div>
           <h1 className="text-3xl font-bold">{profileInfo.name}</h1>
-          <p className="text-muted-foreground">{profileInfo.role} at {profileInfo.company}</p>
+          <p className="text-muted-foreground">
+            {profileInfo.role} at {profileInfo.company}
+          </p>
         </div>
       </div>
 
-      <Tabs defaultValue="info" className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="info">
             <User className="w-4 h-4 mr-2" />
@@ -80,7 +131,9 @@ export function Page() {
           <Card>
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Manage your personal and professional details</CardDescription>
+              <CardDescription>
+                Manage your personal and professional details
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -89,7 +142,9 @@ export function Page() {
                   <Input
                     id="name"
                     value={profileInfo.name}
-                    onChange={(e) => handleProfileChange('name', e.target.value)}
+                    onChange={(e) =>
+                      handleProfileChange("name", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -98,7 +153,9 @@ export function Page() {
                     id="email"
                     type="email"
                     value={profileInfo.email}
-                    onChange={(e) => handleProfileChange('email', e.target.value)}
+                    onChange={(e) =>
+                      handleProfileChange("email", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -106,7 +163,9 @@ export function Page() {
                   <Input
                     id="role"
                     value={profileInfo.role}
-                    onChange={(e) => handleProfileChange('role', e.target.value)}
+                    onChange={(e) =>
+                      handleProfileChange("role", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -114,7 +173,9 @@ export function Page() {
                   <Input
                     id="company"
                     value={profileInfo.company}
-                    onChange={(e) => handleProfileChange('company', e.target.value)}
+                    onChange={(e) =>
+                      handleProfileChange("company", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -122,7 +183,9 @@ export function Page() {
                   <Input
                     id="location"
                     value={profileInfo.location}
-                    onChange={(e) => handleProfileChange('location', e.target.value)}
+                    onChange={(e) =>
+                      handleProfileChange("location", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -204,5 +267,5 @@ export function Page() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
