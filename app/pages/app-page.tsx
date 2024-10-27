@@ -21,6 +21,7 @@ import {
   Globe,
   AlertTriangle,
   Code,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Dialog,
@@ -78,13 +79,19 @@ export default function MainAppPage() {
               <SelectItem value="it">Italiano</SelectItem>
             </SelectContent>
           </Select>
-          <Link href="/settings">
+          <Link href="/settings/general">
             <Button variant="ghost" size="icon">
               <Settings className="h-5 w-5" />
               <span className="sr-only">Settings</span>
             </Button>
           </Link>
-          <Link href="/profile">
+          <Link href="/admin-console">
+            <Button variant="ghost" size="icon">
+              <ShieldAlert className="h-5 w-5" />
+              <span className="sr-only">Admin Console</span>
+            </Button>
+          </Link>
+          <Link href="/profile/info">
             <Button variant="ghost" size="icon">
               <User className="h-5 w-5" />
               <span className="sr-only">User account</span>
