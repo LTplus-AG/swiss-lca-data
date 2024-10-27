@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,63 +34,92 @@ import {
 } from "recharts";
 import { Search } from "lucide-react";
 
-// Mock data - replace with actual API calls in a real application
-const materials = [
-  { id: "1.001", name: "Concrete (standard)", group: "Structural" },
-  { id: "1.002", name: "Concrete (high-strength)", group: "Structural" },
-  { id: "1.003", name: "Concrete (lightweight)", group: "Structural" },
-  { id: "2.001", name: "Steel (structural)", group: "Structural" },
-  { id: "2.002", name: "Steel (reinforcing)", group: "Structural" },
-  { id: "2.003", name: "Steel (stainless)", group: "Structural" },
-  { id: "3.001", name: "Glass (single pane)", group: "Facade" },
-  { id: "3.002", name: "Glass (double pane)", group: "Facade" },
-  { id: "3.003", name: "Glass (triple pane)", group: "Facade" },
-  { id: "4.001", name: "Wood (softwood)", group: "Finishes" },
-  { id: "4.002", name: "Wood (hardwood)", group: "Finishes" },
-  { id: "4.003", name: "Wood (engineered)", group: "Finishes" },
-  { id: "5.001", name: "Insulation (fiberglass)", group: "Insulation" },
-  { id: "5.002", name: "Insulation (mineral wool)", group: "Insulation" },
-  { id: "5.003", name: "Insulation (foam)", group: "Insulation" },
-];
-
-const versions = ["2021", "2022", "2023"];
+interface KBOBMaterial {
+  id: string;
+  uuid: string;
+  nameDE: string;
+  nameFR: string;
+  group: string;
+  density: string | null;
+  unit: string;
+  ubp21Total: number | null;
+  ubp21Production: number | null;
+  ubp21Disposal: number | null;
+  gwpTotal: number | null;
+  gwpProduction: number | null;
+  gwpDisposal: number | null;
+  biogenicCarbon: number | null;
+}
 
 const impactCategories = [
-  { label: "GHG Total", value: "ghgTotal" },
-  { label: "UBP Total", value: "ubpTotal" },
-  { label: "Primary Energy", value: "primaryEnergy" },
+  { label: "GWP Total", value: "gwpTotal" },
+  { label: "UBP21 Total", value: "ubp21Total" },
+  { label: "Primary Energy", value: "primaryEnergy" }, // Note: Update when available
 ];
 
-// Mock impact data - replace with actual data in a real application
-const getImpactData = (materialId: string, version: string) => {
-  const baseValue = Math.random() * 100;
-  return {
-    ghgTotal: baseValue,
-    ubpTotal: baseValue * 10,
-    primaryEnergy: baseValue * 5,
-  };
-};
+const versions = ["2021", "2022", "2023"]; // Keep this until we have version data from API
 
-export function Page() {
+// Add this interface for chart data type
+interface ChartDataItem {
+  name: string;
+  version?: string;
+  [key: string]: string | number | undefined;
+}
+
+export default function DataExplorerPage() {
+  const [materials, setMaterials] = useState<KBOBMaterial[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [selectedVersions, setSelectedVersions] = useState<string[]>(["2023"]);
-  const [selectedImpact, setSelectedImpact] = useState("ghgTotal");
+  const [selectedImpact, setSelectedImpact] = useState("gwpTotal");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch materials on component mount
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/kbob/materials");
+      const data = await response.json();
+
+      if (data.materials?.data) {
+        setMaterials(data.materials.data);
+      } else {
+        console.error("Invalid data format received:", data);
+        setMaterials([]);
+      }
+    } catch (error) {
+      console.error("Error fetching materials:", error);
+      setMaterials([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredMaterials = useMemo(() => {
     return materials.filter(
       (material) =>
-        material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.nameDE.toLowerCase().includes(searchTerm.toLowerCase()) ||
         material.group.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [materials, searchTerm]);
 
   const handleMaterialSelect = (materialId: string) => {
-    setSelectedMaterials((prev) =>
-      prev.includes(materialId)
+    setSelectedMaterials((prev) => {
+      const newSelection = prev.includes(materialId)
         ? prev.filter((id) => id !== materialId)
-        : [...prev, materialId]
-    );
+        : [...prev, materialId];
+
+      // Ensure at least one version is selected if we have materials
+      if (newSelection.length > 0 && selectedVersions.length === 0) {
+        setSelectedVersions(["2023"]); // Default to latest version
+      }
+
+      return newSelection;
+    });
   };
 
   const handleVersionSelect = (version: string) => {
@@ -102,70 +131,106 @@ export function Page() {
   };
 
   const chartData = useMemo(() => {
+    if (!selectedMaterials.length) return []; // Add early return for no selection
+
     if (selectedVersions.length === 1) {
-      return selectedMaterials.map((materialId) => {
-        const material = materials.find((m) => m.id === materialId);
-        const impactData = getImpactData(materialId, selectedVersions[0]);
-        return {
-          name: material?.name || materialId,
-          [selectedImpact]: impactData[selectedImpact],
-        };
-      });
-    } else {
-      return versions.map((version) => ({
-        version,
-        ...selectedMaterials.reduce((acc, materialId) => {
+      // Single version comparison
+      return selectedMaterials
+        .map((materialId) => {
           const material = materials.find((m) => m.id === materialId);
-          if (material) {
-            acc[material.name] = getImpactData(materialId, version)[
-              selectedImpact
-            ];
+          if (!material || !material[selectedImpact as keyof KBOBMaterial])
+            return null;
+
+          return {
+            name: material.nameDE,
+            [selectedImpact]:
+              material[selectedImpact as keyof KBOBMaterial] || 0,
+          };
+        })
+        .filter((item): item is ChartDataItem => item !== null);
+    } else {
+      // Version comparison
+      return selectedVersions.map((version) => {
+        const dataItem: ChartDataItem = {
+          version,
+          name: version, // Add this to fix XAxis label
+        };
+
+        selectedMaterials.forEach((materialId) => {
+          const material = materials.find((m) => m.id === materialId);
+          if (material && material[selectedImpact as keyof KBOBMaterial]) {
+            dataItem[material.nameDE] =
+              material[selectedImpact as keyof KBOBMaterial] || 0;
           }
-          return acc;
-        }, {} as Record<string, number>),
-      }));
+        });
+
+        return dataItem;
+      });
     }
-  }, [selectedMaterials, selectedVersions, selectedImpact]);
+  }, [selectedMaterials, selectedVersions, selectedImpact, materials]);
 
   const renderChart = () => {
+    if (!selectedMaterials.length) {
+      return (
+        <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+          Select materials to view comparison
+        </div>
+      );
+    }
+
     if (selectedVersions.length === 1) {
       return (
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={chartData}>
+          <BarChart data={chartData} margin={{ bottom: 90 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 12 }}
+              interval={0}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
             <YAxis />
             <Tooltip />
             <Legend />
-            <Bar dataKey={selectedImpact} fill="#8884d8" />
+            <Bar
+              dataKey={selectedImpact}
+              fill="#8884d8"
+              name={
+                impactCategories.find((c) => c.value === selectedImpact)
+                  ?.label || selectedImpact
+              }
+            />
           </BarChart>
         </ResponsiveContainer>
       );
-    } else {
-      return (
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="version" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {selectedMaterials.map((materialId, index) => {
-              const material = materials.find((m) => m.id === materialId);
-              return material ? (
-                <Line
-                  key={material.id}
-                  type="monotone"
-                  dataKey={material.name}
-                  stroke={`hsl(${index * 30}, 70%, 50%)`}
-                  strokeWidth={2}
-                />
-              ) : null;
-            })}
-          </LineChart>
-        </ResponsiveContainer>
-      );
     }
+
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <LineChart data={chartData} margin={{ bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          {selectedMaterials.map((materialId, index) => {
+            const material = materials.find((m) => m.id === materialId);
+            return material ? (
+              <Line
+                key={material.id}
+                type="monotone"
+                dataKey={material.nameDE}
+                stroke={`hsl(${(index * 137.5) % 360}, 70%, 50%)`}
+                strokeWidth={2}
+                name={material.nameDE}
+              />
+            ) : null;
+          })}
+        </LineChart>
+      </ResponsiveContainer>
+    );
   };
 
   return (
@@ -193,24 +258,30 @@ export function Page() {
               </div>
             </div>
             <ScrollArea className="h-[200px] border rounded-md p-4">
-              {filteredMaterials.map((material) => (
-                <div
-                  key={material.id}
-                  className="flex items-center space-x-2 mb-2"
-                >
-                  <Checkbox
-                    id={material.id}
-                    checked={selectedMaterials.includes(material.id)}
-                    onCheckedChange={() => handleMaterialSelect(material.id)}
-                  />
-                  <Label htmlFor={material.id} className="flex-grow">
-                    {material.name}{" "}
-                    <span className="text-muted-foreground">
-                      ({material.group})
-                    </span>
-                  </Label>
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  Loading materials...
                 </div>
-              ))}
+              ) : (
+                filteredMaterials.map((material) => (
+                  <div
+                    key={material.id}
+                    className="flex items-center space-x-2 mb-2"
+                  >
+                    <Checkbox
+                      id={material.id}
+                      checked={selectedMaterials.includes(material.id)}
+                      onCheckedChange={() => handleMaterialSelect(material.id)}
+                    />
+                    <Label htmlFor={material.id} className="flex-grow">
+                      {material.nameDE}{" "}
+                      <span className="text-muted-foreground">
+                        ({material.group})
+                      </span>
+                    </Label>
+                  </div>
+                ))
+              )}
             </ScrollArea>
           </CardContent>
         </Card>
@@ -270,12 +341,22 @@ export function Page() {
         <CardHeader>
           <CardTitle>Impact Comparison</CardTitle>
           <CardDescription>
-            {selectedVersions.length === 1
+            {selectedMaterials.length === 0
+              ? "Select materials to compare"
+              : selectedVersions.length === 1
               ? `Compare materials for KBOB ${selectedVersions[0]}`
               : "Compare materials across versions"}
           </CardDescription>
         </CardHeader>
-        <CardContent>{renderChart()}</CardContent>
+        <CardContent className="min-h-[400px]">
+          {loading ? (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              Loading materials data...
+            </div>
+          ) : (
+            renderChart()
+          )}
+        </CardContent>
       </Card>
 
       <Card className="mt-8">
@@ -305,7 +386,7 @@ export function Page() {
                       );
                       return material ? (
                         <th key={material.id} className="text-left p-2">
-                          {material.name}
+                          {material.nameDE}
                         </th>
                       ) : null;
                     })
@@ -313,29 +394,35 @@ export function Page() {
                 </tr>
               </thead>
               <tbody>
-                {chartData.map((row, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="p-2">
-                      {selectedVersions.length === 1 ? row.name : row.version}
-                    </td>
-                    {selectedVersions.length === 1 ? (
+                {chartData
+                  .filter((row): row is ChartDataItem => row !== null)
+                  .map((row, index) => (
+                    <tr key={index} className="border-t">
                       <td className="p-2">
-                        {row[selectedImpact]?.toFixed(2) || "-"}
+                        {selectedVersions.length === 1 ? row.name : row.version}
                       </td>
-                    ) : (
-                      selectedMaterials.map((materialId) => {
-                        const material = materials.find(
-                          (m) => m.id === materialId
-                        );
-                        return material ? (
-                          <td key={material.id} className="p-2">
-                            {row[material.name]?.toFixed(2) || "-"}
-                          </td>
-                        ) : null;
-                      })
-                    )}
-                  </tr>
-                ))}
+                      {selectedVersions.length === 1 ? (
+                        <td className="p-2">
+                          {typeof row[selectedImpact] === "number"
+                            ? row[selectedImpact].toFixed(2)
+                            : "-"}
+                        </td>
+                      ) : (
+                        selectedMaterials.map((materialId) => {
+                          const material = materials.find(
+                            (m) => m.id === materialId
+                          );
+                          return material ? (
+                            <td key={material.id} className="p-2">
+                              {typeof row[material.nameDE] === "number"
+                                ? row[material.nameDE].toFixed(2)
+                                : "-"}
+                            </td>
+                          ) : null;
+                        })
+                      )}
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

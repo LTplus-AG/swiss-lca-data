@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { getMonitoringLink, setMonitoringLink } from "@/lib/kbob-service";
+import {
+  getBlobContent,
+  storeBlobContent,
+  MONITORING_LINK_KEY,
+} from "../lib/storage";
 
 export async function GET() {
   try {
-    const link = await getMonitoringLink();
+    const link = await getBlobContent(MONITORING_LINK_KEY);
     return NextResponse.json({ link });
   } catch (error) {
-    console.error("Failed to fetch monitoring link:", error);
     return NextResponse.json(
-      { error: "Failed to fetch monitoring link" },
+      { error: "Failed to get monitoring link" },
       { status: 500 }
     );
   }
@@ -17,13 +20,9 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const { link } = await request.json();
-    if (!link) {
-      return NextResponse.json({ error: "Link is required" }, { status: 400 });
-    }
-    await setMonitoringLink(link);
+    await storeBlobContent(MONITORING_LINK_KEY, link, "text/plain");
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to update monitoring link:", error);
     return NextResponse.json(
       { error: "Failed to update monitoring link" },
       { status: 500 }

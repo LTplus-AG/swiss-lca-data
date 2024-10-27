@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { getLastIngestionTime } from "@/lib/kbob-service";
+import { getBlobContent, LAST_INGESTION_KEY } from "../lib/storage";
 
 export async function GET() {
   try {
-    const lastIngestionTime = await getLastIngestionTime();
-    return NextResponse.json({ lastIngestionTime });
+    const timestamp = await getBlobContent(LAST_INGESTION_KEY);
+    return NextResponse.json({ timestamp });
   } catch (error) {
-    console.error("Failed to fetch last ingestion time:", error);
     return NextResponse.json(
-      { error: "Failed to fetch last ingestion time" },
+      { error: "Failed to get last ingestion time" },
       { status: 500 }
     );
   }
