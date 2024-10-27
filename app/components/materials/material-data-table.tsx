@@ -210,23 +210,25 @@ export function MaterialsTableComponent() {
     columns: visibleColumns,
   });
 
-  // Fetch all materials once on component mount
+  // Update fetchAllMaterials function to use the correct endpoint
   const fetchAllMaterials = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/kbob/materials");
+      const response = await fetch("/api/kbob/materials/all"); // New endpoint for all materials
       const data = await response.json();
 
-      if (data.materials?.data) {
-        setAllMaterials(data.materials.data);
-        applyFiltersAndOptions(data.materials.data, filters, displayOptions);
+      if (data.success && Array.isArray(data.materials)) {
+        setAllMaterials(data.materials);
+        applyFiltersAndOptions(data.materials, filters, displayOptions);
       } else {
         console.error("Invalid data format received:", data);
         setAllMaterials([]);
+        setDisplayedMaterials([]);
       }
     } catch (error) {
       console.error("Error fetching materials:", error);
       setAllMaterials([]);
+      setDisplayedMaterials([]);
     } finally {
       setLoading(false);
     }
@@ -239,36 +241,33 @@ export function MaterialsTableComponent() {
     currentOptions = displayOptions,
     search = searchTerm
   ) => {
+    if (!Array.isArray(materials)) {
+      console.error("Invalid materials data:", materials);
+      setDisplayedMaterials([]);
+      setTotalPages(1);
+      return;
+    }
+
     let filtered = [...materials];
 
     // Apply text filters
     if (currentFilters.idNumber) {
       filtered = filtered.filter((m) =>
-        m.id.toLowerCase().includes(currentFilters.idNumber.toLowerCase())
+        m.id?.toLowerCase().includes(currentFilters.idNumber.toLowerCase())
       );
     }
     if (currentFilters.group) {
       filtered = filtered.filter((m) =>
-        m.group.toLowerCase().includes(currentFilters.group.toLowerCase())
+        m.group?.toLowerCase().includes(currentFilters.group.toLowerCase())
       );
     }
-    if (currentFilters.disposal) {
-      filtered = filtered.filter(
-        (m) =>
-          m.disposalDE
-            .toLowerCase()
-            .includes(currentFilters.disposal.toLowerCase()) ||
-          m.disposalFR
-            .toLowerCase()
-            .includes(currentFilters.disposal.toLowerCase())
-      );
-    }
+
+    // Remove disposal filter since it's not in the material interface
 
     // Apply range filters
     filtered = filtered.filter((m) => {
       const ubp = m.ubp21Total || 0;
       const gwp = m.gwpTotal || 0;
-      // Add appropriate field for primaryEnergy when available
 
       return (
         ubp >= currentFilters.ubpTotal[0] &&
@@ -282,15 +281,17 @@ export function MaterialsTableComponent() {
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter((material) =>
-        Object.values(material).some((value) =>
-          value?.toString().toLowerCase().includes(searchLower)
-        )
+        Object.entries(material).some(([key, value]) => {
+          // Skip searching in certain fields or null values
+          if (value === null || key === "uuid") return false;
+          return value.toString().toLowerCase().includes(searchLower);
+        })
       );
     }
 
     // Update displayed materials and pagination
     setDisplayedMaterials(filtered);
-    setTotalPages(Math.ceil(filtered.length / ITEMS_PER_PAGE));
+    setTotalPages(Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE)));
     setPage(1); // Reset to first page when filters change
   };
 

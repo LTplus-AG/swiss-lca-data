@@ -115,38 +115,36 @@ export function KbobAdminConsole() {
     setError(null);
     setSuccessMessage(null);
     try {
-      console.log("Starting manual ingestion...");
       const response = await fetch("/api/kbob/trigger-ingestion", {
         method: "POST",
       });
 
-      // Log the raw response
-      console.log("Raw response status:", response.status);
-      const result = await response.json();
-      console.log("Ingestion result:", result);
-
       if (!response.ok) {
-        throw new Error(result.error || "Failed to trigger ingestion");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to trigger ingestion");
       }
 
-      if (result.success) {
+      const result = await response.json();
+      console.log("Ingestion result:", result); // Debug log
+
+      if (result.success && Array.isArray(result.data)) {
         setSuccessMessage(
-          `Manual ingestion triggered successfully. ${result.materials.length} materials processed.`
+          `Manual ingestion triggered successfully. ${result.data.length} materials processed.`
         );
-        // Set the materials directly from the ingestion result
-        setMaterials(result.materials);
+        setMaterials(result.data);
         await fetchLastIngestionTime();
         setShowKbobData(true);
       } else {
-        throw new Error(result.error || "Ingestion failed");
+        throw new Error("Invalid response format from ingestion API");
       }
     } catch (err) {
       console.error("Ingestion error:", err);
       setError(
-        typeof err === "string"
-          ? err
-          : (err as Error).message || "Failed to trigger ingestion"
+        err instanceof Error
+          ? err.message
+          : "Failed to trigger ingestion. Please check your environment configuration."
       );
+      setShowKbobData(false);
     } finally {
       setIsIngesting(false);
     }

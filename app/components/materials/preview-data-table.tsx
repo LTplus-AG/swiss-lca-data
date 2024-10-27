@@ -50,9 +50,14 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    if (initialData) {
+    if (initialData && Array.isArray(initialData) && initialData.length > 0) {
       setData(initialData);
       setTotalPages(Math.ceil(initialData.length / 10));
+      setLoading(false);
+    } else if (initialData) {
+      // If initialData is empty array
+      setData([]);
+      setTotalPages(1);
       setLoading(false);
     } else {
       fetchData();
@@ -135,15 +140,21 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
     );
   }
 
-  if (!data.length) {
+  if (!data || data.length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="text-center">
-            <p className="text-gray-500">No KBOB data available.</p>
-            <Button onClick={handleRefresh} variant="outline" className="mt-4">
-              Refresh
-            </Button>
+            <p className="text-gray-500">No materials data available.</p>
+            {!initialData && (
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                className="mt-4"
+              >
+                Refresh
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

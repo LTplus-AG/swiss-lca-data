@@ -10,6 +10,17 @@ const LAST_INGESTION_KEY = "kbob/last_ingestion.txt";
 
 export async function POST() {
   try {
+    // Verify environment variables
+    if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required environment variables. Please check your configuration.",
+        },
+        { status: 500 }
+      );
+    }
+
     console.log("Starting KBOB data ingestion...");
 
     // Fetch the Excel file
@@ -52,6 +63,7 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
+      data: materials, // Return the actual materials data
       materialsCount: materials.length,
       timestamp: timestamp,
     });
@@ -59,11 +71,7 @@ export async function POST() {
     console.error("Ingestion error:", error);
     return NextResponse.json(
       {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unknown error during ingestion",
+        error: error instanceof Error ? error.message : "Internal server error",
       },
       { status: 500 }
     );
