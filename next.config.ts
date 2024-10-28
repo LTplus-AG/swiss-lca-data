@@ -2,14 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: {
+    // This will completely ignore ESLint during builds
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
+    // This will ignore TypeScript errors during builds
     ignoreBuildErrors: true,
   },
-  // Keep any other existing config options you have here
+  // There's also a Clerk warning about Edge Runtime
+  experimental: {
+    // This should help with the Clerk Edge Runtime warning
+    serverComponentsExternalPackages: ["@clerk/backend"],
+  },
 };
 
 export default nextConfig;
