@@ -35,6 +35,8 @@ import {
   Globe,
   AlertTriangle,
   ShieldAlert,
+  Settings,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,26 +52,6 @@ export default function MainAppPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold">KBOB Platform</h1>
-        <div className="flex items-center space-x-4">
-          <Select value={language} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-[180px]">
-              <Globe className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="de">Deutsch</SelectItem>
-              <SelectItem value="fr">Français</SelectItem>
-              <SelectItem value="it">Italiano</SelectItem>
-            </SelectContent>
-          </Select>
-          <Link href="/admin-console">
-            <Button variant="ghost" size="icon">
-              <ShieldAlert className="h-5 w-5" />
-              <span className="sr-only">Admin Console</span>
-            </Button>
-          </Link>
-        </div>
       </div>
 
       <Alert
@@ -161,7 +143,7 @@ export default function MainAppPage() {
           API Access
         </h2>
         <div className="space-y-4">
-          <p className="text-muted-foreground">
+          <p>
             Integrate KBOB data directly into your applications with our
             comprehensive API:
           </p>

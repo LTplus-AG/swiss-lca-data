@@ -1,14 +1,12 @@
-"use client";
-
-import { SignIn } from "@clerk/nextjs";
+import { SignUp } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function LoginPage() {
+export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 p-4">
       <Card className="w-full max-w-md bg-white">
         <CardContent className="p-0">
-          <SignIn
+          <SignUp
             appearance={{
               elements: {
                 rootBox: "w-full",
@@ -16,6 +14,10 @@ export default function LoginPage() {
                 formButtonPrimary: "bg-blue-600 hover:bg-blue-700 text-white",
               },
             }}
+            routing="path"
+            path="/sign-up"
+            signInUrl="/sign-in"
+            afterSignUpUrl="/"
           />
         </CardContent>
       </Card>
