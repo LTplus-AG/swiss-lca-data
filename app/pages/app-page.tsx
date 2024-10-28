@@ -184,28 +184,19 @@ export default function MainAppPage() {
           <CardContent>
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                New materials added to the database, expanding our coverage of
-                sustainable building products
+                API Playground & Documentation, Material Search & BIM
+                Integration 🚀
               </li>
               <li>
-                Improved BIM export functionality for seamless integration with
-                popular design software
+                Incl. Excel, CSV and JSON export functionality as a first step,
+                Speckle Connector for true BIM integration will be next 🤝
               </li>
               <li>
-                Enhanced Data Explorer with advanced comparison tools and
-                visualization options
-              </li>
-              <li>
-                Performance optimizations and user interface improvements for a
-                smoother experience
+                Data Explorer with advanced comparison tools & visualization
+                options coming soon, stay tuned...
               </li>
             </ul>
           </CardContent>
-          <CardFooter>
-            <Link href="/news">
-              <Button variant="outline">Read More</Button>
-            </Link>
-          </CardFooter>
         </Card>
       </div>
 
