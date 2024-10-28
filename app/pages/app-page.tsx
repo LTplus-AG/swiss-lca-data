@@ -78,11 +78,13 @@ export default function MainAppPage() {
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Important Information</AlertTitle>
         <AlertDescription>
-          The KBOB Platform provides access to construction material data
-          sourced from open data published by the Swiss government. This data is
-          not created or verified by us, and we are not responsible for its
-          accuracy, completeness, or reliability. Use the information for
-          reference purposes only and verify critical data from primary sources.
+          We provide access to environmental impact material data sourced from
+          open data published by KBOB (Koordinationskonferenz der Bau- und
+          Liegenschaftsorgane der öffentlichen Bauherren KBOB), a Swiss
+          government entity. This data is not created or verified by us, and we
+          are not responsible for its accuracy, completeness, or reliability.
+          Use the information for reference purposes only and verify critical
+          data from primary sources.
         </AlertDescription>
       </Alert>
 
@@ -96,9 +98,9 @@ export default function MainAppPage() {
           </CardHeader>
           <CardContent>
             <p>
-              Access our comprehensive database of construction materials.
-              Search, filter, and compare environmental impact data to make
-              informed decisions for your sustainable building projects.
+              Access a comprehensive database of construction material impact
+              data. Search, filter, and compare environmental impact data to
+              make informed decisions for your sustainable building projects.
             </p>
           </CardContent>
           <CardFooter>
@@ -240,32 +242,15 @@ export default function MainAppPage() {
           </DialogHeader>
           <div className="py-4">
             <p className="mb-4">
-              The KBOB Platform provides access to construction material data
-              sourced from open data published by the Swiss government. We want
-              to make you aware of the following important points:
+              We provide access to environmental impact material data sourced
+              from open data published by KBOB (Koordinationskonferenz der Bau-
+              und Liegenschaftsorgane der öffentlichen Bauherren KBOB), a Swiss
+              government entity. This data is not created or verified by us, and
+              we are not responsible for its accuracy, completeness, or
+              reliability. Use the information for reference purposes only and
+              verify critical data from primary sources.
             </p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>
-                The data displayed on this platform is not created or verified
-                by us.
-              </li>
-              <li>
-                We are not responsible for the accuracy, completeness, or
-                reliability of the data.
-              </li>
-              <li>
-                The information should be used for reference purposes only and
-                may not be suitable for all use cases.
-              </li>
-              <li>
-                Users are encouraged to verify critical information from primary
-                sources.
-              </li>
-              <li>
-                By using this platform, you acknowledge and accept these
-                limitations.
-              </li>
-            </ul>
+            {/* Remove the bullet points list since it's redundant with the new text */}
           </div>
           <DialogFooter>
             <Button onClick={() => setShowModal(false)}>I Understand</Button>
