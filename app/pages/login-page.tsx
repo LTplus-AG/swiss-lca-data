@@ -1,3 +1,5 @@
+/* eslint-disable-next-line no-unescaped-entities */
+
 "use client";
 
 import { SignIn } from "@clerk/nextjs";

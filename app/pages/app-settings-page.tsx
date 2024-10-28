@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bell, Lock, Settings, User } from "lucide-react";
+import { Bell, Lock, Settings } from "lucide-react";
 
 export function Page({ defaultTab = "general" }) {
   const [activeTab, setActiveTab] = useState(defaultTab);

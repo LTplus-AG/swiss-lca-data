@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  storeBlobContent,
-  MATERIALS_KEY,
-  LAST_INGESTION_KEY,
-} from "../lib/storage";
+import { LAST_INGESTION_KEY } from "../lib/storage";
 import { put } from "@vercel/blob";
 import axios from "axios";
 import * as XLSX from "xlsx";

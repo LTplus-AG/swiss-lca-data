@@ -2,7 +2,6 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,9 +71,6 @@ export function KbobAdminConsole() {
   const [isUpdatingLink, setIsUpdatingLink] = useState(false);
   const [isTestingLink, setIsTestingLink] = useState(false);
   const [isIngesting, setIsIngesting] = useState(false);
-  const [lastIngestionTime, setLastIngestionTime] = useState<string | null>(
-    null
-  );
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);

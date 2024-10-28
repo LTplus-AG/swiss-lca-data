@@ -11,13 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
@@ -32,11 +25,7 @@ import {
   FileSpreadsheet,
   BarChart3,
   Code,
-  Globe,
   AlertTriangle,
-  ShieldAlert,
-  Settings,
-  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

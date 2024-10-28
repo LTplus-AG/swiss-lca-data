@@ -384,8 +384,15 @@ export function MaterialsTableComponent() {
 
   // Add effect to trigger filtering when ranges change
   useEffect(() => {
-    applyFiltersAndOptions(allMaterials);
-  }, [indicatorRanges, selectedIndicatorFilters]);
+    applyFiltersAndOptions(allMaterials, filters, displayOptions, searchTerm);
+  }, [
+    indicatorRanges,
+    selectedIndicatorFilters,
+    allMaterials,
+    filters,
+    displayOptions,
+    searchTerm,
+  ]);
 
   return (
     <div className="container mx-auto py-8">

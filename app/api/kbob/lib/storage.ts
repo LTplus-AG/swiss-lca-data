@@ -10,13 +10,6 @@ const BLOB_BASE_URL =
   process.env.NEXT_PUBLIC_BLOB_STORE_URL ||
   "https://your-blob-store-base-url.com";
 
-// Helper to get the absolute URL
-function getAbsoluteUrl(path: string): string {
-  const protocol = process.env.NEXT_PUBLIC_PROTOCOL || "http";
-  const host = process.env.NEXT_PUBLIC_HOST || "localhost:3000";
-  return `${protocol}://${host}${path}`;
-}
-
 export async function getBlobContent(key: string): Promise<string | null> {
   try {
     // Ensure the key has a proper URL format by combining with base URL

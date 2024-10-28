@@ -90,7 +90,7 @@ export default function DataExplorerPage() {
     fetchMaterials();
   }, []);
 
-  // Add new useEffect for fetching indicators
+  // Update the useEffect for fetching indicators
   useEffect(() => {
     const fetchIndicators = async () => {
       try {
@@ -109,7 +109,7 @@ export default function DataExplorerPage() {
     };
 
     fetchIndicators();
-  }, []);
+  }, [selectedImpact]);
 
   const fetchMaterials = async () => {
     try {

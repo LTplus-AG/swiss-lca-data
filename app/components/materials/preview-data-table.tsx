@@ -49,21 +49,6 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
   const [search, setSearch] = useState("");
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    if (initialData && Array.isArray(initialData) && initialData.length > 0) {
-      setData(initialData);
-      setTotalPages(Math.ceil(initialData.length / 10));
-      setLoading(false);
-    } else if (initialData) {
-      // If initialData is empty array
-      setData([]);
-      setTotalPages(1);
-      setLoading(false);
-    } else {
-      fetchData();
-    }
-  }, [initialData]);
-
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -90,6 +75,21 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (initialData && Array.isArray(initialData) && initialData.length > 0) {
+      setData(initialData);
+      setTotalPages(Math.ceil(initialData.length / 10));
+      setLoading(false);
+    } else if (initialData) {
+      // If initialData is empty array
+      setData([]);
+      setTotalPages(1);
+      setLoading(false);
+    } else {
+      fetchData();
+    }
+  }, [initialData, fetchData]);
 
   const getPaginatedData = () => {
     let filteredData = data;
