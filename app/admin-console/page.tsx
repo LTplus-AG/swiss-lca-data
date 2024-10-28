@@ -97,6 +97,10 @@ export function KbobAdminConsole() {
     }
   };
 
+  useEffect(() => {
+    fetchMonitoringLink();
+  }, []);
+
   const testLink = async (link: string) => {
     setIsTestingLink(true);
     setError(null);

@@ -13,7 +13,7 @@ import {
   Code,
   Globe,
   User,
-  ShieldAlert,
+  Cross,
 } from "lucide-react";
 import {
   Select,
@@ -48,7 +48,7 @@ export function Navbar() {
     setLanguage(value);
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
       setShowPasswordPrompt(false);
@@ -69,8 +69,11 @@ export function Navbar() {
           {/* Left side - Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0">
-              <span className="text-2xl font-bold text-primary">
-                SwissLCAdata
+              <span className="text-2xl font-bold text-primary flex items-center">
+                <span className="bg-red-500 p-0.5 rounded-sm flex items-center justify-center">
+                  <Cross className="h-4 w-4 text-white transform rotate-12" />
+                </span>
+                <span className="ml-2">LCA data</span>
               </span>
             </Link>
           </div>

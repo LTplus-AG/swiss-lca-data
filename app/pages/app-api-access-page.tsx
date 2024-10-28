@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,9 +36,26 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Code, Copy, CheckCircle2, Key, ExternalLink } from "lucide-react";
+import {
+  Code,
+  Copy,
+  CheckCircle2,
+  Key,
+  ExternalLink,
+  Database,
+  Search,
+  List,
+  FileText,
+  BarChart2,
+  Ruler,
+  GitCompare,
+  AlertCircle,
+  Lock,
+  Dice1, // Changed from Dice to Dice1
+} from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { Check, Zap } from "lucide-react";
 
 // Add these type definitions at the top of the file
 interface DataTypeValue {
@@ -72,14 +89,6 @@ interface DocumentationSection {
   usage?: string;
 }
 
-// Add this interface near the top with other interfaces
-interface Indicator {
-  id: string;
-  label: string;
-  unit: string;
-  description: string;
-}
-
 // Define METRIC_OPTIONS before it's used in API_ENDPOINTS
 const METRIC_OPTIONS = [
   { label: "UBP Total", value: "ubp21Total" },
@@ -91,8 +100,8 @@ const METRIC_OPTIONS = [
   { label: "Biogenic Carbon", value: "biogenicCarbon" },
 ];
 
-// Move all static endpoints outside the component
-const STATIC_ENDPOINTS = [
+// Then define API_ENDPOINTS
+const API_ENDPOINTS = [
   {
     name: "Get Random Materials",
     method: "GET",
@@ -155,6 +164,24 @@ const STATIC_ENDPOINTS = [
     params: [{ name: "uuid", type: "string", description: "Material UUID" }],
   },
   {
+    name: "Get Statistics",
+    method: "GET",
+    endpoint: "/api/kbob/materials/stats",
+    description: "Get statistical information about the materials database",
+    params: [
+      {
+        name: "metric",
+        type: "select",
+        description: "Statistical metric to analyze",
+        options: [
+          { label: "Environmental Impact (UBP)", value: "ubp" },
+          { label: "Carbon Footprint (GWP)", value: "gwp" },
+          { label: "Biogenic Carbon", value: "biogenic" },
+        ],
+      },
+    ],
+  },
+  {
     name: "Get Available Units",
     method: "GET",
     endpoint: "/api/kbob/materials/units",
@@ -200,9 +227,9 @@ const STATIC_ENDPOINTS = [
 ];
 
 const API_PLANS = [
-  { name: "Basic", requests: "500 requests per month" },
-  { name: "Pro", requests: "10,000 requests per month" },
-  { name: "Enterprise", requests: "Unlimited requests per month" },
+  { name: "Basic", requests: "500", price: "50.-" },
+  { name: "Pro", requests: "10,000", price: "200.-" },
+  { name: "Enterprise", requests: "Unlimited", price: "Get in touch" },
 ];
 
 // Add more detailed response examples
@@ -361,7 +388,7 @@ const RESPONSE_EXAMPLES = {
 }`,
 };
 
-// Update DOCUMENTATION_SECTIONS to include all endpoints
+// Add a new section for Key Concepts in the documentation
 const DOCUMENTATION_SECTIONS = {
   "Get All Materials": {
     overview:
@@ -761,10 +788,46 @@ const DOCUMENTATION_SECTIONS = {
       "Each indicator has a unique ID that can be used in other API endpoints",
     ],
   },
+  "API Access Guide": {
+    // renamed from "Key Concepts"
+    overview:
+      "Essential information about API authentication, rate limits, and usage guidelines.",
+    responseFields: [],
+    dataTypes: {},
+    notes: [],
+    usage: "",
+    description: [
+      {
+        title: "Authentication",
+        content:
+          "Our API uses JWT Bearer tokens for authentication. Each token contains a keyId, customerId, plan level, and expiration date. Tokens must be included in the Authorization header of each request.",
+      },
+      {
+        title: "Rate Limiting",
+        content:
+          "Rate limits are enforced based on the API plan. Basic users can make 1,000 requests per hour, Professional users can make 10,000 requests per hour, and Enterprise users can make 50,000 requests per hour.",
+      },
+      {
+        title: "Usage Tracking",
+        content:
+          "All API requests are logged for usage tracking. This data can be used for monitoring and billing purposes. Users can request usage reports to see their API consumption.",
+      },
+      {
+        title: "Error Handling",
+        content:
+          "The API returns standard HTTP status codes along with error messages in the response body. Common errors include 401 for unauthorized access and 429 for rate limit exceeded.",
+      },
+      {
+        title: "API Key Management",
+        content:
+          "Users can generate, revoke, and manage their API keys through the API key management service. Revoked keys cannot be used for authentication.",
+      },
+    ],
+  },
 };
 
 export default function ApiAccessPage() {
-  const [selectedEndpoint, setSelectedEndpoint] = useState(STATIC_ENDPOINTS[0]);
+  const [selectedEndpoint, setSelectedEndpoint] = useState(API_ENDPOINTS[0]);
   const [params, setParams] = useState<Record<string, string>>({});
   const [response, setResponse] = useState("");
   const [copied, setCopied] = useState(false);
@@ -777,62 +840,6 @@ export default function ApiAccessPage() {
     status: "idle" | "success" | "error";
     message?: string;
   }>({ status: "idle" });
-  const [indicators, setIndicators] = useState<Indicator[]>([]);
-
-  // Use useMemo to create API_ENDPOINTS that depends on indicators
-  const API_ENDPOINTS = useMemo(
-    () => [
-      ...STATIC_ENDPOINTS,
-      {
-        name: "Get Statistics",
-        method: "GET",
-        endpoint: "/api/kbob/materials/stats",
-        description: "Get statistical information about the materials database",
-        params: [
-          {
-            name: "metric",
-            type: "select",
-            description: "Statistical metric to analyze",
-            options: indicators.map((indicator) => ({
-              label: indicator.label,
-              value: indicator.id,
-            })),
-            required: true,
-          },
-        ],
-      },
-      // ... rest of the endpoints ...
-    ],
-    [indicators]
-  );
-
-  // Update selectedEndpoint when API_ENDPOINTS changes
-  useEffect(() => {
-    const currentEndpointName = selectedEndpoint.name;
-    const newEndpoint = API_ENDPOINTS.find(
-      (e) => e.name === currentEndpointName
-    );
-    if (newEndpoint) {
-      setSelectedEndpoint(newEndpoint);
-    }
-  }, [API_ENDPOINTS, selectedEndpoint.name]);
-
-  // Add useEffect to fetch indicators when component mounts
-  useEffect(() => {
-    const fetchIndicators = async () => {
-      try {
-        const response = await fetch("/api/kbob/indicators");
-        const data = await response.json();
-        if (data.success && data.indicators) {
-          setIndicators(data.indicators);
-        }
-      } catch (error) {
-        console.error("Failed to fetch indicators:", error);
-      }
-    };
-
-    fetchIndicators();
-  }, []);
 
   // Add useEffect to set initial random count
   useEffect(() => {
@@ -953,17 +960,10 @@ fetch('${fullUrl}', {
     }
   };
 
-  // Add a function to handle the request access
   const handleGetApiAccess = () => {
-    const selectedPlanDetails = API_PLANS.find((p) => p.name === selectedPlan);
-    if (!selectedPlanDetails) return;
-
-    const subject = encodeURIComponent(`${selectedPlan} API Access Request`);
-    const body = encodeURIComponent(
-      `Hello,\n\nI would like to request access to the ${selectedPlan} API plan (${selectedPlanDetails.requests}).\n\nBest regards`
-    );
-
-    window.location.href = `mailto:info@lt.plus?subject=${subject}&body=${body}`;
+    // In a real application, you would implement the logic to process the API plan request
+    console.log(`Requested API plan: ${selectedPlan}`);
+    setShowApiPlanModal(false);
   };
 
   // Update the fetchRandomUUID function to get multiple unique UUIDs
@@ -1174,6 +1174,31 @@ fetch('${fullUrl}', {
     );
   };
 
+  const plans = [
+    {
+      name: "Basic",
+      description: "For small projects and testing",
+      price: "49 CHF",
+      features: ["limited API calls", "Basic support"],
+    },
+    {
+      name: "Pro",
+      description: "For growing businesses",
+      price: "99 CHF",
+      features: ["more API calls", "Priority support", "Advanced analytics"],
+    },
+    {
+      name: "Enterprise",
+      description: "For large-scale applications",
+      price: "Custom",
+      features: [
+        "Unlimited API calls",
+        "dedicated support",
+        "Custom integrations",
+      ],
+    },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">API Access</h1>
@@ -1297,7 +1322,7 @@ fetch('${fullUrl}', {
                 <AccordionItem value="item-get-all">
                   <AccordionTrigger>
                     <div className="flex items-center space-x-2">
-                      <Code className="h-4 w-4" />
+                      <Database className="h-4 w-4" />
                       <span>Get All Materials</span>
                     </div>
                   </AccordionTrigger>
@@ -1360,15 +1385,16 @@ fetch('${fullUrl}', {
                           {Object.entries(
                             DOCUMENTATION_SECTIONS["Get All Materials"]
                               .dataTypes
-                          ).map(([key, value]: [string, DataTypeValue]) => (
+                          ).map(([key, value]) => (
                             <div key={key} className="border rounded-md p-3">
                               <h5 className="font-medium mb-2">{key}</h5>
                               {value.examples && (
                                 <div className="bg-secondary/50 p-2 rounded-sm text-sm">
                                   Examples:{" "}
-                                  {value.examples
-                                    .map((ex: string) => `"${ex}"`)
-                                    .join(", ")}
+                                  {Array.isArray(value.examples) &&
+                                    value.examples
+                                      .map((ex) => `"${ex}"`)
+                                      .join(", ")}
                                 </div>
                               )}
                             </div>
@@ -1395,7 +1421,33 @@ fetch('${fullUrl}', {
                   <AccordionItem value={`item-${index}`} key={index}>
                     <AccordionTrigger>
                       <div className="flex items-center space-x-2">
-                        <Code className="h-4 w-4" />
+                        {endpoint.name === "Get All Materials" && (
+                          <Database className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Get Random Materials" && (
+                          <Dice1 className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Search Materials" && (
+                          <Search className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Get Material Names" && (
+                          <List className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Get Material Details" && (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Get Statistics" && (
+                          <BarChart2 className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Get Available Units" && (
+                          <Ruler className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Compare Materials" && (
+                          <GitCompare className="h-4 w-4" />
+                        )}
+                        {endpoint.name === "Get Indicators" && (
+                          <AlertCircle className="h-4 w-4" />
+                        )}
                         <span>{endpoint.name}</span>
                       </div>
                     </AccordionTrigger>
@@ -1521,6 +1573,53 @@ fetch('${fullUrl}', {
                     </AccordionContent>
                   </AccordionItem>
                 ))}
+
+                {/* Replace the styled API Access Guide section with the original documentation style */}
+                <AccordionItem value="item-api-access">
+                  <AccordionTrigger>
+                    <div className="flex items-center space-x-2">
+                      <Lock className="h-4 w-4" />
+                      <span>API Access Guide</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="font-semibold mb-2">Overview</h4>
+                        <p className="text-muted-foreground">
+                          {DOCUMENTATION_SECTIONS["API Access Guide"].overview}
+                        </p>
+                      </div>
+                      {DOCUMENTATION_SECTIONS[
+                        "API Access Guide"
+                      ].description.map((concept, index) => (
+                        <div key={index}>
+                          <h5 className="font-semibold flex items-center gap-2">
+                            {concept.title === "Authentication" && (
+                              <Key className="h-4 w-4" />
+                            )}
+                            {concept.title === "Rate Limiting" && (
+                              <AlertCircle className="h-4 w-4" />
+                            )}
+                            {concept.title === "Usage Tracking" && (
+                              <BarChart2 className="h-4 w-4" />
+                            )}
+                            {concept.title === "Error Handling" && (
+                              <AlertCircle className="h-4 w-4" />
+                            )}
+                            {concept.title === "API Key Management" && (
+                              <Key className="h-4 w-4" />
+                            )}
+                            {concept.title}
+                          </h5>
+                          <p className="text-muted-foreground mt-2">
+                            {concept.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               </Accordion>
             </TabsContent>
           </Tabs>
@@ -1528,35 +1627,68 @@ fetch('${fullUrl}', {
       </Card>
 
       <Dialog open={showApiPlanModal} onOpenChange={setShowApiPlanModal}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Choose an API Plan</DialogTitle>
+            <DialogTitle>Choose Your API Plan</DialogTitle>
             <DialogDescription>
-              Select a plan that suits your needs. Each plan offers different
-              levels of access and request limits.
+              Select the plan that best fits your needs. All plans include our
+              core API features.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <RadioGroup value={selectedPlan} onValueChange={setSelectedPlan}>
-              {API_PLANS.map((plan) => (
-                <div
-                  key={plan.name}
-                  className="flex items-center space-x-2 mb-2"
-                >
-                  <RadioGroupItem value={plan.name} id={plan.name} />
-                  <Label htmlFor={plan.name}>
-                    <span className="font-semibold">{plan.name}</span> -{" "}
-                    {plan.requests}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
+          <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800">
+            <div className="container px-4 md:px-6">
+              <div className="flex flex-col gap-6 mt-12">
+                {plans.map((plan) => (
+                  <Card key={plan.name} className="flex flex-col">
+                    <CardHeader>
+                      <CardTitle>{plan.name}</CardTitle>
+                      <CardDescription>{plan.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <div className="text-4xl font-bold mb-4">
+                        {plan.price}
+                      </div>
+                      <ul className="space-y-2">
+                        {plan.features.map((feature) => (
+                          <li key={feature} className="flex items-center">
+                            <Check className="mr-2 h-4 w-4 text-green-500" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter>
+                      <Button className="w-full">
+                        {plan.name === "Enterprise"
+                          ? "Contact Sales"
+                          : "Get Started"}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+              <div className="flex flex-col items-center justify-center mt-12 space-y-4 text-center">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Need more information about our API plans?
+                </p>
+                <Button variant="outline" size="lg" className="group">
+                  Contact Us
+                  <Zap className="ml-2 h-4 w-4 transition-transform group-hover:rotate-12" />
+                </Button>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Reach out to us at{" "}
+                  <a
+                    href="mailto:info@lt.plus"
+                    className="font-medium underline underline-offset-4"
+                  >
+                    info@lt.plus
+                  </a>
+                </p>
+              </div>
+            </div>
+          </section>
           <DialogFooter>
-            <Button onClick={handleGetApiAccess} disabled={!selectedPlan}>
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Request Access
-            </Button>
+            <Button onClick={() => setShowApiPlanModal(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

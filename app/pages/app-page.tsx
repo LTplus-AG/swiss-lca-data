@@ -50,9 +50,7 @@ export default function MainAppPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">KBOB Platform</h1>
-      </div>
+      <div className="flex justify-between items-center mb-8"></div>
 
       <Alert
         className={cn("mb-8", "border-yellow-500 bg-yellow-50 text-yellow-900")}
@@ -66,7 +64,16 @@ export default function MainAppPage() {
           government entity. This data is not created or verified by us, and we
           are not responsible for its accuracy, completeness, or reliability.
           Use the information for reference purposes only and verify critical
-          data from primary sources.
+          data from primary sources. For more information, visit{" "}
+          <a
+            href="https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline underline-offset-4"
+          >
+            KBOB
+          </a>
+          .
         </AlertDescription>
       </Alert>
 
@@ -180,10 +187,9 @@ export default function MainAppPage() {
         <h2 className="text-2xl font-semibold mb-4">Recent Updates</h2>
         <Card>
           <CardHeader>
-            <CardTitle>Platform News</CardTitle>
+            <CardTitle>News</CardTitle>
             <CardDescription>
-              Stay informed about the latest changes and improvements to the
-              KBOB Platform
+              Stay informed about the latest changes and improvements:
             </CardDescription>
           </CardHeader>
           <CardContent>

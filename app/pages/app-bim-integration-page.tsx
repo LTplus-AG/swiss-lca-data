@@ -31,7 +31,8 @@ import {
   ArrowRight,
   Check,
   Search,
-} from "lucide-react";
+  Link, // Import the Link icon
+} from "lucide-react"; // Add Link icon import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   DropdownMenu,
@@ -839,13 +840,20 @@ export function Page() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button disabled className="relative">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export to Speckle
-                  <span className="absolute -top-3 -right-3 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
-                    Coming Soon
-                  </span>
-                </Button>
+                <a
+                  href="https://www.speckle.systems/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button disabled className="relative">
+                    <Link className="mr-2 h-4 w-4" />{" "}
+                    {/* Use the Link icon here */}
+                    Link Data to Speckle & BIM
+                    <span className="absolute -top-3 -right-3 bg-black text-white text-xs px-2 py-0.5 rounded-full">
+                      Coming Soon
+                    </span>
+                  </Button>
+                </a>
               </div>
             </CardFooter>
           </Card>
