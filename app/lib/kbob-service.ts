@@ -91,29 +91,6 @@ export async function setMonitoringLink(
   }
 }
 
-export async function getLastIngestionTime(): Promise<string | null> {
-  try {
-    // Try KV first
-    const timestamp = await kv.get<string>(LAST_INGESTION_KEY);
-    if (timestamp) {
-      return timestamp;
-    }
-
-    // If not in KV, try Blob storage
-    const timestampFromBlob = await getBlobContent(LAST_INGESTION_KEY);
-    if (timestampFromBlob) {
-      // Cache in KV for future requests
-      await kv.set(LAST_INGESTION_KEY, timestampFromBlob);
-      return timestampFromBlob;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error fetching last ingestion time:", error);
-    return null;
-  }
-}
-
 export async function getRawMaterials(): Promise<Record<string, any>[]> {
   try {
     // Try to get from KV first

@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation"; // Note: using next/navigation, not next/router
 
 const navItems = [
   { name: "Home", href: "/", icon: Home },
@@ -33,12 +35,31 @@ const navItems = [
 ];
 
 export function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === "admin"; // Check if the user is an admin
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [password, setPassword] = useState("");
   const [language, setLanguage] = useState("en");
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false); // Define isOpen state
+  const router = useRouter();
 
   const handleLanguageChange = (value: string) => {
     setLanguage(value);
+  };
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
+      setShowPasswordPrompt(false);
+      router.push("/admin-console"); // This uses the App Router navigation
+    } else {
+      alert("Incorrect password");
+    }
+  };
+
+  const toggleDropdown = () => {
+    setIsOpen((prev) => !prev); // Toggle the dropdown state
   };
 
   return (
@@ -118,6 +139,25 @@ export function Navbar() {
                 </Button>
               </Link>
             </SignedOut>
+
+            {isAdmin && (
+              <>
+                <Button onClick={() => setShowPasswordPrompt(true)}>
+                  Admin Console
+                </Button>
+                {showPasswordPrompt && (
+                  <form onSubmit={handlePasswordSubmit}>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter admin password"
+                    />
+                    <button type="submit">Submit</button>
+                  </form>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
