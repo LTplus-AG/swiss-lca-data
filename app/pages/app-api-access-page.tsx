@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Code, Copy, CheckCircle2, Key, ExternalLink } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 
 // Define METRIC_OPTIONS before it's used in API_ENDPOINTS
 const METRIC_OPTIONS = [
@@ -52,12 +54,19 @@ const METRIC_OPTIONS = [
 // Then define API_ENDPOINTS
 const API_ENDPOINTS = [
   {
-    name: "Sample Materials",
+    name: "Get Random Materials",
     method: "GET",
-    endpoint: "/api/kbob/materials",
-    description:
-      "Get a random sample of 10 materials. Useful for testing and exploration.",
-    params: [], // No parameters needed
+    endpoint: "/api/kbob/materials/random",
+    description: "Get a random sample of materials from the database.",
+    params: [
+      {
+        name: "count",
+        type: "random-number",
+        description: "Number of random materials to return (1-10)",
+        min: 1,
+        max: 10,
+      },
+    ],
   },
   {
     name: "Search Materials",
@@ -159,6 +168,13 @@ const API_ENDPOINTS = [
       },
     ],
   },
+  {
+    name: "Get Indicators",
+    method: "GET",
+    endpoint: "/api/kbob/indicators",
+    description: "Get all available environmental impact indicators",
+    params: [], // No parameters needed
+  },
 ];
 
 const API_PLANS = [
@@ -169,7 +185,7 @@ const API_PLANS = [
 
 // Add more detailed response examples
 const RESPONSE_EXAMPLES = {
-  "Sample Materials": `{
+  "Get All Materials": `{
   "success": true,
   "materials": [
     {
@@ -185,12 +201,25 @@ const RESPONSE_EXAMPLES = {
       "gwpProduction": 3.95,
       "gwpDisposal": 0.37,
       "biogenicCarbon": 0
+    },
+    {
+      "uuid": "7B912F45-8D3E-4C2A-9B1D-FF5E82A47C39",
+      "nameDE": "Beton C25/30",
+      "nameFR": "Béton C25/30",
+      "density": "2400",
+      "unit": "kg/m³",
+      "ubp21Total": 380,
+      "ubp21Production": 320,
+      "ubp21Disposal": 60,
+      "gwpTotal": 250.5,
+      "gwpProduction": 200.3,
+      "gwpDisposal": 50.2,
+      "biogenicCarbon": null
     }
-    // ... 9 more materials
+    // ... more materials
   ],
-  "count": 10,
-  "totalMaterials": 42,
-  "note": "This endpoint returns a random sample of 10 materials"
+  "count": 244,
+  "totalMaterials": 244
 }`,
   "Search Materials": `{
   "success": true,
@@ -272,38 +301,168 @@ const RESPONSE_EXAMPLES = {
   "metrics": ["ubp21Total", "gwpTotal"],
   "language": "de"
 }`,
+  "Get Random Materials": `{
+  "success": true,
+  "materials": [
+    {
+      "uuid": "21330D47-1D7A-36C8-7F0E-CB11F4CB2767",
+      "nameDE": "2-Komponenten Klebstoff",
+      "nameFR": "Colle à 2 composants",
+      "density": "1500",
+      "unit": "kg",
+      "ubp21Total": 2140,
+      "ubp21Production": 1890,
+      "ubp21Disposal": 250,
+      "gwpTotal": 4.32,
+      "gwpProduction": 3.95,
+      "gwpDisposal": 0.37,
+      "biogenicCarbon": 0
+    }
+    // ... more random materials
+  ],
+  "count": 10,
+  "totalMaterials": 244
+}`,
+  "Get Indicators": `{
+  "success": true,
+  "indicators": [
+    {
+      "id": "gwpTotal",
+      "label": "GWP Total",
+      "unit": "kg CO₂ eq",
+      "description": "Total Global Warming Potential over 100 years",
+      "group": "environmental"
+    },
+    // ... more indicators
+  ],
+  "count": 7
+}`,
 };
 
 // Update DOCUMENTATION_SECTIONS to include all endpoints
 const DOCUMENTATION_SECTIONS = {
-  "Sample Materials": {
+  "Get All Materials": {
     overview:
-      "Returns a random selection of 10 materials from the database. This endpoint is useful for exploring the data structure and testing integrations.",
-    usage:
-      "No parameters required. Each call returns a different random selection.",
+      "Returns the complete list of materials from the KBOB database with all their properties and environmental impact data.",
+    usage: `This endpoint provides access to the full KBOB materials database. 
+    No parameters are required. Consider using pagination in your application 
+    when displaying the results, as the response contains all materials (200+ entries).`,
     responseFields: [
-      { name: "success", type: "boolean", description: "Operation status" },
+      {
+        name: "success",
+        type: "boolean",
+        description: "Operation status indicator",
+      },
       {
         name: "materials",
         type: "array",
-        description: "Array of 10 random material objects",
+        description:
+          "Array of material objects containing detailed information for each material",
+      },
+      {
+        name: "materials[].uuid",
+        type: "string",
+        description: "Unique identifier for the material (format: UUID v4)",
+      },
+      {
+        name: "materials[].nameDE",
+        type: "string",
+        description: "Material name in German",
+      },
+      {
+        name: "materials[].nameFR",
+        type: "string",
+        description: "Material name in French",
+      },
+      {
+        name: "materials[].density",
+        type: "string",
+        description:
+          "Material density value. Can contain special formats like ranges (e.g., '20-25') or placeholder values ('-'). Not strictly numeric.",
+      },
+      {
+        name: "materials[].unit",
+        type: "string",
+        description:
+          "Measurement unit for the material (e.g., 'kg', 'kg/m³', 'm²')",
+      },
+      {
+        name: "materials[].ubp21Total",
+        type: "number | null",
+        description:
+          "Total environmental impact points (UBP 2021). Null if not applicable.",
+      },
+      {
+        name: "materials[].ubp21Production",
+        type: "number | null",
+        description:
+          "Production phase environmental impact points. Null if not available.",
+      },
+      {
+        name: "materials[].ubp21Disposal",
+        type: "number | null",
+        description:
+          "Disposal phase environmental impact points. Null if not available.",
+      },
+      {
+        name: "materials[].gwpTotal",
+        type: "number | null",
+        description:
+          "Total global warming potential in kg CO₂ eq. Null if not applicable.",
+      },
+      {
+        name: "materials[].gwpProduction",
+        type: "number | null",
+        description:
+          "Production phase global warming potential. Null if not available.",
+      },
+      {
+        name: "materials[].gwpDisposal",
+        type: "number | null",
+        description:
+          "Disposal phase global warming potential. Null if not available.",
+      },
+      {
+        name: "materials[].biogenicCarbon",
+        type: "number | null",
+        description:
+          "Biogenic carbon content in kg C. Null if not applicable or not measured.",
       },
       {
         name: "count",
         type: "number",
-        description: "Number of materials returned (always 10)",
+        description:
+          "Number of materials in the response (same as materials.length)",
       },
       {
         name: "totalMaterials",
         type: "number",
-        description: "Total number of materials in database",
-      },
-      {
-        name: "note",
-        type: "string",
-        description: "Informational message about the endpoint",
+        description: "Total number of materials available in the database",
       },
     ],
+    notes: [
+      "All materials are returned without pagination - implement client-side pagination for large datasets",
+      "The density field is a string to accommodate ranges and special values",
+      "All impact values (ubp21, gwp) can be null and should be handled accordingly",
+      "Material names are provided in both German (DE) and French (FR)",
+      "For testing or exploration, use the 'Get Random Materials' endpoint instead",
+      "The response typically contains 200+ materials",
+    ],
+    dataTypes: {
+      density: {
+        type: "string",
+        examples: ["1500", "20-25", "-", "x-y"],
+        note: "Stored as string to handle ranges and special cases",
+      },
+      units: {
+        type: "string",
+        examples: ["kg", "kg/m³", "m²", "m"],
+      },
+      impacts: {
+        type: "number | null",
+        note: "All impact values (UBP, GWP) can be null if not applicable",
+      },
+    },
   },
   "Search Materials": {
     overview: "Search for materials by their name in either German or French.",
@@ -502,6 +661,84 @@ const DOCUMENTATION_SECTIONS = {
       },
     ],
   },
+  "Get Random Materials": {
+    overview: "Returns a random sample of materials from the KBOB database.",
+    usage:
+      "Optionally specify the number of random materials to return using the 'count' parameter. Default is 10 materials.",
+    responseFields: [
+      { name: "success", type: "boolean", description: "Operation status" },
+      {
+        name: "materials",
+        type: "array",
+        description: "Array of randomly selected materials",
+      },
+      {
+        name: "count",
+        type: "number",
+        description: "Number of materials returned",
+      },
+      {
+        name: "totalMaterials",
+        type: "number",
+        description: "Total number of materials in database",
+      },
+    ],
+  },
+  "Get Indicators": {
+    overview:
+      "Returns all available environmental impact indicators with their metadata.",
+    usage:
+      "Use this endpoint to get information about available indicators for material impact assessment. Includes units, descriptions, and grouping.",
+    responseFields: [
+      {
+        name: "success",
+        type: "boolean",
+        description: "Operation status",
+      },
+      {
+        name: "indicators",
+        type: "array",
+        description: "Array of indicator objects",
+      },
+      {
+        name: "indicators[].id",
+        type: "string",
+        description: "Unique identifier for the indicator (e.g., 'gwpTotal')",
+      },
+      {
+        name: "indicators[].label",
+        type: "string",
+        description: "Human-readable name of the indicator (e.g., 'GWP Total')",
+      },
+      {
+        name: "indicators[].unit",
+        type: "string",
+        description: "Unit of measurement (e.g., 'kg CO₂ eq', 'UBP')",
+      },
+      {
+        name: "indicators[].description",
+        type: "string",
+        description: "Detailed description of what the indicator measures",
+      },
+      {
+        name: "indicators[].group",
+        type: "string",
+        description:
+          "Category of the indicator ('environmental', 'economic', 'social')",
+      },
+      {
+        name: "count",
+        type: "number",
+        description: "Total number of available indicators",
+      },
+    ],
+    notes: [
+      "All indicators are currently in the 'environmental' group",
+      "Units are provided in their proper scientific notation (e.g., CO₂ with subscript)",
+      "Indicators include both total values and phase-specific values (production/disposal)",
+      "Each indicator has a unique ID that can be used in other API endpoints",
+    ],
+  },
 };
 
 export default function ApiAccessPage() {
@@ -514,12 +751,27 @@ export default function ApiAccessPage() {
   const [materials, setMaterials] = useState<
     Array<{ uuid: string; name: string }>
   >([]);
+  const [apiCallStatus, setApiCallStatus] = useState<{
+    status: "idle" | "success" | "error";
+    message?: string;
+  }>({ status: "idle" });
+
+  // Add useEffect to set initial random count
+  useEffect(() => {
+    // Only set initial count if it's not already set
+    if (!params.count) {
+      const initialCount = Math.floor(Math.random() * 10) + 1;
+      setParams((prev) => ({ ...prev, count: initialCount.toString() }));
+    }
+  }, []); // Empty dependency array means this runs once after mount
 
   const handleEndpointChange = (value: string) => {
     const endpoint = API_ENDPOINTS.find((e) => e.name === value);
     if (endpoint) {
       setSelectedEndpoint(endpoint);
       setParams({});
+      setApiCallStatus({ status: "idle" }); // Reset status when changing endpoints
+      setResponse(""); // Also clear the response
     }
   };
 
@@ -564,6 +816,7 @@ fetch('${fullUrl}', {
 
   const handleTryApi = async () => {
     try {
+      setApiCallStatus({ status: "idle" });
       setResponse("Loading...");
 
       // Build the URL with parameters
@@ -585,21 +838,40 @@ fetch('${fullUrl}', {
         method: selectedEndpoint.method,
         headers: {
           "Content-Type": "application/json",
-          // Add API key header when authentication is implemented
-          // "Authorization": "Bearer YOUR_API_KEY",
         },
       });
 
       const data = await response.json();
       setResponse(JSON.stringify(data, null, 2));
+      setApiCallStatus({
+        status: "success",
+        message: "✓ Response updated below",
+      });
+
+      // Modified scrolling behavior
+      setTimeout(() => {
+        const responseElement = document.getElementById("api-response");
+        if (responseElement) {
+          const yOffset = -20; // Add a small offset from the top
+          const y =
+            responseElement.getBoundingClientRect().top +
+            window.pageYOffset +
+            yOffset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      }, 100);
     } catch (error) {
       setResponse(
         JSON.stringify(
-          { error: "API call failed", details: error.message },
+          { error: "API call failed", details: (error as Error).message },
           null,
           2
         )
       );
+      setApiCallStatus({
+        status: "error",
+        message: "API call failed. Check the response below for details.",
+      });
     }
   };
 
@@ -619,10 +891,12 @@ fetch('${fullUrl}', {
         const randomMaterials = data.materials
           .sort(() => 0.5 - Math.random()) // Shuffle array
           .slice(0, count) // Take first 'count' items
-          .map((material) => ({
-            uuid: material.uuid,
-            name: material.nameDE || material.nameFR,
-          }));
+          .map(
+            (material: { uuid: string; nameDE?: string; nameFR?: string }) => ({
+              uuid: material.uuid,
+              name: material.nameDE || material.nameFR,
+            })
+          );
         return randomMaterials;
       }
     } catch (error) {
@@ -637,10 +911,12 @@ fetch('${fullUrl}', {
       // For compare endpoint, get two different UUIDs
       const materials = await fetchRandomUUIDs(2);
       if (materials) {
-        const uuids = materials.map((m) => m.uuid).join(",");
+        const uuids = materials.map((m: { uuid: string }) => m.uuid).join(",");
         handleParamChange(paramName, uuids);
         setResponse(
-          `Using UUIDs from: ${materials.map((m) => m.name).join(" and ")}`
+          `Using UUIDs from: ${materials
+            .map((m: { name: string }) => m.name)
+            .join(" and ")}`
         );
       }
     } else {
@@ -651,6 +927,11 @@ fetch('${fullUrl}', {
         setResponse(`Using UUID from: ${materials[0].name}`);
       }
     }
+  };
+
+  // Add helper function to generate random count
+  const generateRandomCount = (min: number, max: number) => {
+    return Math.floor(Math.random() * (max - min + 1) + min);
   };
 
   // Update the parameter input rendering to include the random UUID button
@@ -718,7 +999,14 @@ fetch('${fullUrl}', {
           <SelectTrigger>
             <SelectValue placeholder={`Select ${param.name}`}>
               {selectedValues
-                .map((v) => param.options.find((opt) => opt.value === v)?.label)
+                .map(
+                  (
+                    v: string // Explicitly define 'v' as a string
+                  ) =>
+                    param.options.find(
+                      (opt: { label: string; value: string }) => opt.value === v
+                    )?.label
+                )
                 .join(", ")}
             </SelectValue>
           </SelectTrigger>
@@ -730,6 +1018,64 @@ fetch('${fullUrl}', {
             ))}
           </SelectContent>
         </Select>
+      );
+    }
+
+    // Update the renderParamInput function for the random-number type
+    if (param.type === "random-number") {
+      return (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 p-2 hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:rotate-12 flex-shrink-0"
+              onClick={() => {
+                const randomCount = generateRandomCount(param.min, param.max);
+                handleParamChange(param.name, randomCount.toString());
+                // Add a small animation to the input
+                const input = document.getElementById(param.name);
+                if (input) {
+                  input.classList.add("scale-105");
+                  setTimeout(() => input.classList.remove("scale-105"), 150);
+                }
+              }}
+              type="button"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
+                <path d="M8.5 8.5v0" />
+                <path d="M15.5 15.5v0" />
+                <path d="M12 12v0" />
+              </svg>
+            </Button>
+            <div className="relative w-20">
+              <Input
+                id={param.name}
+                value={params[param.name] || ""}
+                readOnly
+                placeholder="-"
+                className="pl-6 text-center text-lg font-mono bg-muted"
+              />
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                #
+              </div>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground flex items-center justify-between px-1">
+            <span>Min: {param.min}</span>
+            <span>Max: {param.max}</span>
+          </div>
+        </div>
       );
     }
 
@@ -811,9 +1157,25 @@ fetch('${fullUrl}', {
                 </div>
               ))}
 
-              <Button onClick={handleTryApi} className="mb-4">
-                Try it out
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleTryApi} className="mb-4">
+                  Try it out
+                </Button>
+                {apiCallStatus.status !== "idle" && (
+                  <div
+                    className={cn(
+                      "text-sm px-3 py-1 rounded-md transition-all opacity-80",
+                      apiCallStatus.status === "success"
+                        ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                        : "bg-red-500/10 text-red-600 dark:text-red-400"
+                    )}
+                  >
+                    {apiCallStatus.status === "success"
+                      ? "✓ Response updated below"
+                      : "× API call failed"}
+                  </div>
+                )}
+              </div>
 
               <div className="relative">
                 <pre className="bg-secondary p-4 rounded-md overflow-x-auto">
@@ -834,13 +1196,119 @@ fetch('${fullUrl}', {
               </div>
 
               {response && (
-                <pre className="bg-secondary p-4 rounded-md overflow-x-auto">
-                  <code className="text-sm">{response}</code>
-                </pre>
+                <div id="api-response" className="relative mt-8 border-t pt-4">
+                  <div className="absolute -top-3 left-0 bg-background px-2 text-sm text-muted-foreground">
+                    Response
+                  </div>
+                  <pre className="bg-secondary p-4 rounded-md overflow-x-auto">
+                    <code className="text-sm">{response}</code>
+                  </pre>
+                </div>
               )}
             </TabsContent>
             <TabsContent value="documentation">
               <Accordion type="single" collapsible className="w-full">
+                {/* Add Get All Materials as first item */}
+                <AccordionItem value="item-get-all">
+                  <AccordionTrigger>
+                    <div className="flex items-center space-x-2">
+                      <Code className="h-4 w-4" />
+                      <span>Get All Materials</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="font-semibold mb-2">Overview</h4>
+                        <p className="text-muted-foreground">
+                          {DOCUMENTATION_SECTIONS["Get All Materials"].overview}
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold mb-2">Endpoint</h4>
+                        <div className="bg-secondary p-3 rounded-md flex items-center space-x-2">
+                          <span className="text-sm font-mono text-green-600">
+                            GET
+                          </span>
+                          <code className="text-sm">/api/kbob/materials</code>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold mb-2">Response Fields</h4>
+                        <div className="border rounded-md divide-y">
+                          {DOCUMENTATION_SECTIONS[
+                            "Get All Materials"
+                          ].responseFields.map((field) => (
+                            <div key={field.name} className="p-2">
+                              <div className="flex items-center space-x-2">
+                                <code className="text-sm bg-secondary px-1 rounded">
+                                  {field.name}
+                                </code>
+                                <span className="text-xs text-muted-foreground">
+                                  {field.type}
+                                </span>
+                              </div>
+                              <p className="text-sm mt-1 text-muted-foreground">
+                                {field.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold mb-2">Example Response</h4>
+                        <div className="relative">
+                          <pre className="bg-secondary p-4 rounded-md overflow-x-auto">
+                            <code className="text-sm">
+                              {RESPONSE_EXAMPLES["Get All Materials"]}
+                            </code>
+                          </pre>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold mb-2">Data Types</h4>
+                        <div className="space-y-4">
+                          {Object.entries(
+                            DOCUMENTATION_SECTIONS["Get All Materials"]
+                              .dataTypes
+                          ).map(([key, value]) => (
+                            <div key={key} className="border rounded-md p-3">
+                              <h5 className="font-medium mb-2">{key}</h5>
+                              {value.examples &&
+                                "examples" in value &&
+                                "note" in value && ( // Ensure both 'examples' and 'note' exist
+                                  <div className="bg-secondary/50 p-2 rounded-sm text-sm">
+                                    Examples:{" "}
+                                    {Array.isArray(value.examples) &&
+                                      value.examples
+                                        .map((ex) => `"${ex}"`)
+                                        .join(", ")}
+                                  </div>
+                                )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold mb-2">Notes</h4>
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                          {DOCUMENTATION_SECTIONS[
+                            "Get All Materials"
+                          ].notes.map((note, index) => (
+                            <li key={index}>{note}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Rest of the endpoints */}
                 {API_ENDPOINTS.map((endpoint, index) => (
                   <AccordionItem value={`item-${index}`} key={index}>
                     <AccordionTrigger>

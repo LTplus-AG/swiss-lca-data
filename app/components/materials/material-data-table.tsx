@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,12 @@ interface FiltersAndOptionsProps {
   setSearchTerm: (value: string) => void;
   visibleColumns: string[];
   toggleColumn: (column: string) => void;
-  columns: Array<{ key: string; label: string }>;
+  columns: Array<{
+    key: string;
+    label: string;
+    description?: string;
+    unit?: string;
+  }>;
   groupByMaterial: boolean;
   setGroupByMaterial: (value: boolean) => void;
   filterOption: string;
@@ -150,13 +155,20 @@ interface KBOBMaterial {
   biogenicCarbon: number | null;
 }
 
+// Add new interface for indicators
+interface Indicator {
+  id: string;
+  label: string;
+  unit: string;
+  description: string;
+}
+
 // Add the MaterialsTableComponent
 export function MaterialsTableComponent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     "id",
     "nameDE",
-    "group",
     "ubp21Total",
     "gwpTotal",
   ]);
@@ -169,22 +181,50 @@ export function MaterialsTableComponent() {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Add columns definition
-  const columns = [
-    { key: "id", label: "ID" },
-    { key: "nameDE", label: "Name (DE)" },
-    { key: "nameFR", label: "Name (FR)" },
-    { key: "group", label: "Group" },
-    { key: "density", label: "Density" },
-    { key: "unit", label: "Unit" },
-    { key: "ubp21Total", label: "UBP21 Total" },
-    { key: "ubp21Production", label: "UBP21 Production" },
-    { key: "ubp21Disposal", label: "UBP21 Disposal" },
-    { key: "gwpTotal", label: "GWP Total" },
-    { key: "gwpProduction", label: "GWP Production" },
-    { key: "gwpDisposal", label: "GWP Disposal" },
-    { key: "biogenicCarbon", label: "Biogenic Carbon" },
-  ];
+  // Add state for indicators
+  const [indicators, setIndicators] = useState<Indicator[]>([]);
+
+  // Add useEffect to fetch indicators
+  useEffect(() => {
+    const fetchIndicators = async () => {
+      try {
+        const response = await fetch("/api/kbob/indicators");
+        const data = await response.json();
+        if (data.success && Array.isArray(data.indicators)) {
+          setIndicators(data.indicators);
+        }
+      } catch (error) {
+        console.error("Error fetching indicators:", error);
+      }
+    };
+
+    fetchIndicators();
+  }, []);
+
+  // Update columns definition to use indicators
+  const columns: Array<{
+    key: string;
+    label: string;
+    description?: string;
+    unit?: string;
+  }> = useMemo(
+    () => [
+      { key: "id", label: "ID" },
+      { key: "nameDE", label: "Name (DE)" },
+      { key: "nameFR", label: "Name (FR)" },
+      { key: "group", label: "Group" },
+      { key: "density", label: "Density" },
+      { key: "unit", label: "Unit" },
+      // Add indicator columns dynamically
+      ...indicators.map((indicator) => ({
+        key: indicator.id,
+        label: indicator.label,
+        description: indicator.description,
+        unit: indicator.unit,
+      })),
+    ],
+    [indicators]
+  );
 
   // Add toggleColumn function
   const toggleColumn = (columnKey: string) => {
@@ -209,6 +249,16 @@ export function MaterialsTableComponent() {
     language: "de",
     columns: visibleColumns,
   });
+
+  // Add new state for column search
+  const [columnSearchTerm, setColumnSearchTerm] = useState("");
+
+  // Add filtered columns computation
+  const filteredColumns = useMemo(() => {
+    return columns.filter((column) =>
+      column.label.toLowerCase().includes(columnSearchTerm.toLowerCase())
+    );
+  }, [columns, columnSearchTerm]);
 
   // Update fetchAllMaterials function to use the correct endpoint
   const fetchAllMaterials = async () => {
@@ -241,58 +291,38 @@ export function MaterialsTableComponent() {
     currentOptions = displayOptions,
     search = searchTerm
   ) => {
-    if (!Array.isArray(materials)) {
-      console.error("Invalid materials data:", materials);
-      setDisplayedMaterials([]);
-      setTotalPages(1);
-      return;
-    }
-
     let filtered = [...materials];
 
-    // Apply text filters
-    if (currentFilters.idNumber) {
-      filtered = filtered.filter((m) =>
-        m.id?.toLowerCase().includes(currentFilters.idNumber.toLowerCase())
-      );
-    }
-    if (currentFilters.group) {
-      filtered = filtered.filter((m) =>
-        m.group?.toLowerCase().includes(currentFilters.group.toLowerCase())
-      );
-    }
-
-    // Remove disposal filter since it's not in the material interface
-
-    // Apply range filters
-    filtered = filtered.filter((m) => {
-      const ubp = m.ubp21Total || 0;
-      const gwp = m.gwpTotal || 0;
-
-      return (
-        ubp >= currentFilters.ubpTotal[0] &&
-        ubp <= currentFilters.ubpTotal[1] &&
-        gwp >= currentFilters.greenhouseGasEmissionsTotal[0] &&
-        gwp <= currentFilters.greenhouseGasEmissionsTotal[1]
-      );
-    });
-
-    // Apply search term
+    // Apply text search
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter((material) =>
         Object.entries(material).some(([key, value]) => {
-          // Skip searching in certain fields or null values
           if (value === null || key === "uuid") return false;
           return value.toString().toLowerCase().includes(searchLower);
         })
       );
     }
 
+    // Apply indicator range filters
+    filtered = filtered.filter((material) => {
+      return selectedIndicatorFilters.every((indicatorId) => {
+        const value = material[indicatorId as keyof KBOBMaterial] as
+          | number
+          | null;
+        const range = indicatorRanges[indicatorId];
+
+        // Skip filtering if no range is set or value is null
+        if (!range || value === null) return true;
+
+        return value >= range[0] && value <= range[1];
+      });
+    });
+
     // Update displayed materials and pagination
     setDisplayedMaterials(filtered);
     setTotalPages(Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE)));
-    setPage(1); // Reset to first page when filters change
+    setPage(1);
   };
 
   // Handle filters change
@@ -324,6 +354,39 @@ export function MaterialsTableComponent() {
     return displayedMaterials.slice(start, end);
   };
 
+  // Add state for selected indicators to filter
+  const [selectedIndicatorFilters, setSelectedIndicatorFilters] = useState<
+    string[]
+  >(["ubp21Total", "gwpTotal"]);
+
+  // Add state for indicator ranges at the top with other state declarations
+  const [indicatorRanges, setIndicatorRanges] = useState<
+    Record<string, [number, number]>
+  >({});
+
+  // Add useEffect to initialize ranges when indicators are loaded
+  useEffect(() => {
+    if (indicators.length > 0) {
+      const initialRanges: Record<string, [number, number]> = {};
+      indicators.forEach((indicator) => {
+        // Set initial range based on indicator type
+        if (indicator.id.includes("ubp")) {
+          initialRanges[indicator.id] = [0, 1000];
+        } else if (indicator.id.includes("gwp")) {
+          initialRanges[indicator.id] = [0, 500];
+        } else {
+          initialRanges[indicator.id] = [0, 100];
+        }
+      });
+      setIndicatorRanges(initialRanges);
+    }
+  }, [indicators]);
+
+  // Add effect to trigger filtering when ranges change
+  useEffect(() => {
+    applyFiltersAndOptions(allMaterials);
+  }, [indicatorRanges, selectedIndicatorFilters]);
+
   return (
     <div className="container mx-auto py-8">
       <Card>
@@ -331,67 +394,206 @@ export function MaterialsTableComponent() {
           <CardTitle>KBOB Materials</CardTitle>
         </CardHeader>
         <CardContent>
-          <MaterialsFiltersOptions
-            onFiltersChange={handleFiltersChange}
-            onOptionsChange={handleOptionsChange}
-          />
-
-          {/* Search and columns dropdown */}
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search
-                className="absolute left-3 top-3 text-gray-400"
-                size={20}
-              />
-              <Input
-                placeholder="Search materials..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  // Apply search filter immediately
-                  applyFiltersAndOptions(
-                    allMaterials,
-                    filters,
-                    displayOptions,
-                    e.target.value
-                  );
-                }}
-                className="pl-10"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  Columns
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                {columns.map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.key}
-                    checked={visibleColumns.includes(column.key)}
-                    onCheckedChange={() => {
-                      toggleColumn(column.key);
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Search and Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Search and columns selection */}
+              <div className="flex gap-4">
+                <div className="flex-1 relative">
+                  <Search
+                    className="absolute left-3 top-3 text-gray-400"
+                    size={20}
+                  />
+                  <Input
+                    placeholder="Search materials..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      applyFiltersAndOptions(
+                        allMaterials,
+                        filters,
+                        displayOptions,
+                        e.target.value
+                      );
                     }}
+                    className="pl-10"
+                  />
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-[200px]">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Columns ({visibleColumns.length})
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-[400px]"
+                    onCloseAutoFocus={(e) => e.preventDefault()}
                   >
-                    {column.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                    <div className="p-2">
+                      <div className="relative mb-2">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search columns..."
+                          value={columnSearchTerm}
+                          onChange={(e) => setColumnSearchTerm(e.target.value)}
+                          className="pl-8"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {filteredColumns.map((column) => (
+                          <DropdownMenuCheckboxItem
+                            key={column.key}
+                            checked={visibleColumns.includes(column.key)}
+                            onCheckedChange={() => {
+                              toggleColumn(column.key);
+                            }}
+                            className="py-2"
+                            onSelect={(e) => {
+                              e.preventDefault();
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span>{column.label}</span>
+                              {column.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {column.description}
+                                </span>
+                              )}
+                            </div>
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                        {filteredColumns.length === 0 && (
+                          <div className="text-sm text-muted-foreground text-center py-2">
+                            No columns match your search
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Indicator selection for filters */}
+              <div>
+                <Label>Filter by Indicators</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full mt-2">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Selected Indicators ({selectedIndicatorFilters.length})
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[400px]" align="end">
+                    <div className="p-2">
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {indicators.map((indicator) => (
+                          <DropdownMenuCheckboxItem
+                            key={indicator.id}
+                            checked={selectedIndicatorFilters.includes(
+                              indicator.id
+                            )}
+                            onCheckedChange={(checked) => {
+                              setSelectedIndicatorFilters((prev) =>
+                                checked
+                                  ? [...prev, indicator.id]
+                                  : prev.filter((id) => id !== indicator.id)
+                              );
+                            }}
+                            className="py-2"
+                          >
+                            <div className="flex flex-col">
+                              <span>{indicator.label}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {indicator.description}
+                              </span>
+                            </div>
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </div>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Indicator range sliders */}
+              <div className="space-y-6">
+                {selectedIndicatorFilters.map((indicatorId) => {
+                  const indicator = indicators.find(
+                    (i) => i.id === indicatorId
+                  );
+                  if (!indicator) return null;
+
+                  return (
+                    <div key={indicatorId} className="space-y-2">
+                      <Label className="flex items-center justify-between">
+                        <span>{indicator.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({indicator.unit})
+                        </span>
+                      </Label>
+                      <div className="pt-2">
+                        <Slider
+                          value={indicatorRanges[indicatorId] || [0, 100]}
+                          min={0}
+                          max={indicator.id.includes("ubp") ? 1000 : 500}
+                          step={1}
+                          minStepsBetweenThumbs={1}
+                          onValueChange={(value) => {
+                            setIndicatorRanges((prev) => ({
+                              ...prev,
+                              [indicatorId]: value as [number, number],
+                            }));
+                            // Filtering will be triggered by the useEffect above
+                          }}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>{indicatorRanges[indicatorId]?.[0] || 0}</span>
+                          <span>
+                            {indicatorRanges[indicatorId]?.[1] || 100}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Table section */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  {visibleColumns.map((columnKey) => (
-                    <TableHead key={columnKey} className="whitespace-nowrap">
-                      {columns.find((col) => col.key === columnKey)?.label}
-                    </TableHead>
-                  ))}
+                  {visibleColumns.map((columnKey) => {
+                    const column = columns.find((col) => col.key === columnKey);
+                    return (
+                      <TableHead key={columnKey} className="whitespace-nowrap">
+                        {column?.description ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger className="cursor-help">
+                                {column.label}
+                                {column.unit && ` (${column.unit})`}
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{column.description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          column?.label
+                        )}
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -432,7 +634,7 @@ export function MaterialsTableComponent() {
             </Table>
           </div>
 
-          {/* Pagination section with current page indicator */}
+          {/* Pagination section */}
           <div className="flex justify-between items-center mt-4">
             <div className="text-sm text-muted-foreground">
               Page {page} of {totalPages}

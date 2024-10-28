@@ -1,31 +1,23 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Home,
-  Search,
-  Database,
-  FileSpreadsheet,
-  BarChart2,
-  Code
-} from 'lucide-react'
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Home, Search, FileSpreadsheet, BarChart2, Code } from "lucide-react";
 
 const navItems = [
-  { name: 'Home', href: '/', icon: Home },
-  { name: 'Materials', href: '/materials', icon: Search },
-  { name: 'Data Management', href: '/data-management', icon: Database },
-  { name: 'BIM Integration', href: '/bim-integration', icon: FileSpreadsheet },
-  { name: 'Data Explorer', href: '/data-explorer', icon: BarChart2 },
-  { name: 'API Access', href: '/api-access', icon: Code },
-]
+  { name: "Home", href: "/", icon: Home },
+  { name: "Materials", href: "/materials", icon: Search },
+  { name: "BIM Integration", href: "/bim-integration", icon: FileSpreadsheet },
+  { name: "Data Explorer", href: "/data-explorer", icon: BarChart2 },
+  { name: "API Access", href: "/api-access", icon: Code },
+];
 
 export function Navbar() {
-  const [isOpen, setIsOpen] = useState(false)
-  const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <nav className="bg-background border-b">
@@ -33,7 +25,9 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0">
-              <span className="text-2xl font-bold text-primary">SwissLCAdata</span>
+              <span className="text-2xl font-bold text-primary">
+                SwissLCAdata
+              </span>
             </Link>
           </div>
           <div className="hidden md:block">
@@ -44,13 +38,11 @@ export function Navbar() {
                   href={item.href}
                   className={cn(
                     "text-sm font-medium transition-colors hover:text-primary",
-                    pathname === item.href
-                      ? "text-primary"
-                      : "text-black"
+                    pathname === item.href ? "text-primary" : "text-black"
                   )}
                 >
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     className="hover:bg-gray-100"
                   >
@@ -119,5 +111,5 @@ export function Navbar() {
         </div>
       )}
     </nav>
-  )
+  );
 }

@@ -53,12 +53,12 @@ export function MaterialsFiltersOptions({
     ],
   });
 
-  const handleFilterChange = (key, value) => {
+  const handleFilterChange = (key: keyof typeof filters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     onFiltersChange({ ...filters, [key]: value });
   };
 
-  const handleOptionChange = (key, value) => {
+  const handleOptionChange = (key: keyof typeof options, value: any) => {
     setOptions((prev) => ({ ...prev, [key]: value }));
     onOptionsChange({ ...options, [key]: value });
   };

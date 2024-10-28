@@ -62,8 +62,17 @@ const versions = ["2021", "2022", "2023"]; // Keep this until we have version da
 // Add this interface for chart data type
 interface ChartDataItem {
   name: string;
-  version?: string;
-  [key: string]: string | number | undefined;
+  version: string; // Changed from version?: string; to version: string;
+  [key: string]: string | number; // Change here to remove undefined
+}
+
+// Add new interface and state
+interface Indicator {
+  id: string;
+  label: string;
+  unit: string;
+  description: string;
+  group: "environmental" | "economic" | "social";
 }
 
 export default function DataExplorerPage() {
@@ -73,20 +82,61 @@ export default function DataExplorerPage() {
   const [selectedVersions, setSelectedVersions] = useState<string[]>(["2023"]);
   const [selectedImpact, setSelectedImpact] = useState("gwpTotal");
   const [searchTerm, setSearchTerm] = useState("");
+  // Add new state for indicators
+  const [indicators, setIndicators] = useState<Indicator[]>([]);
 
   // Fetch materials on component mount
   useEffect(() => {
     fetchMaterials();
   }, []);
 
+  // Add new useEffect for fetching indicators
+  useEffect(() => {
+    const fetchIndicators = async () => {
+      try {
+        const response = await fetch("/api/kbob/indicators");
+        const data = await response.json();
+        if (data.success && Array.isArray(data.indicators)) {
+          setIndicators(data.indicators);
+          // Set default indicator if none selected
+          if (!selectedImpact && data.indicators.length > 0) {
+            setSelectedImpact(data.indicators[0].id);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching indicators:", error);
+      }
+    };
+
+    fetchIndicators();
+  }, []);
+
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/kbob/materials");
+      const response = await fetch("/api/kbob/materials/all"); // Use the /all endpoint for complete dataset
       const data = await response.json();
 
-      if (data.materials?.data) {
-        setMaterials(data.materials.data);
+      if (data.success && Array.isArray(data.materials)) {
+        // Update to match the actual API response structure
+        setMaterials(
+          data.materials.map((material: any) => ({
+            id: material.uuid, // Map uuid to id for compatibility
+            uuid: material.uuid,
+            nameDE: material.nameDE,
+            nameFR: material.nameFR,
+            group: material.group || "Uncategorized",
+            density: material.density,
+            unit: material.unit,
+            ubp21Total: material.ubp21Total,
+            ubp21Production: material.ubp21Production,
+            ubp21Disposal: material.ubp21Disposal,
+            gwpTotal: material.gwpTotal,
+            gwpProduction: material.gwpProduction,
+            gwpDisposal: material.gwpDisposal,
+            biogenicCarbon: material.biogenicCarbon,
+          }))
+        );
       } else {
         console.error("Invalid data format received:", data);
         setMaterials([]);
@@ -138,7 +188,10 @@ export default function DataExplorerPage() {
       return selectedMaterials
         .map((materialId) => {
           const material = materials.find((m) => m.id === materialId);
-          if (!material || !material[selectedImpact as keyof KBOBMaterial])
+          if (
+            !material ||
+            material[selectedImpact as keyof KBOBMaterial] === undefined
+          )
             return null;
 
           return {
@@ -321,12 +374,20 @@ export default function DataExplorerPage() {
                   onValueChange={setSelectedImpact}
                 >
                   <SelectTrigger id="impact-category">
-                    <SelectValue placeholder="Select impact category" />
+                    <SelectValue placeholder="Select impact category">
+                      {indicators.find((i) => i.id === selectedImpact)?.label ||
+                        "Select indicator"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {impactCategories.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
+                    {indicators.map((indicator) => (
+                      <SelectItem key={indicator.id} value={indicator.id}>
+                        <div className="flex flex-col">
+                          <span>{indicator.label}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {indicator.description} ({indicator.unit})
+                          </span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -339,7 +400,12 @@ export default function DataExplorerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Impact Comparison</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            Impact Comparison
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+              Charts Coming Soon
+            </span>
+          </CardTitle>
           <CardDescription>
             {selectedMaterials.length === 0
               ? "Select materials to compare"
@@ -348,14 +414,19 @@ export default function DataExplorerPage() {
               : "Compare materials across versions"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="min-h-[400px]">
+        <CardContent className="min-h-[400px] relative">
           {loading ? (
             <div className="flex items-center justify-center h-[400px] text-muted-foreground">
               Loading materials data...
             </div>
           ) : (
-            renderChart()
+            <div className="opacity-50">{renderChart()}</div>
           )}
+          <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+            <div className="text-lg font-medium text-muted-foreground">
+              Chart Visualization Coming Soon
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -414,8 +485,9 @@ export default function DataExplorerPage() {
                           );
                           return material ? (
                             <td key={material.id} className="p-2">
-                              {typeof row[material.nameDE] === "number"
-                                ? row[material.nameDE].toFixed(2)
+                              {typeof row[material.nameDE] === "number" &&
+                              !isNaN(row[material.nameDE] as number)
+                                ? (row[material.nameDE] as number).toFixed(2)
                                 : "-"}
                             </td>
                           ) : null;

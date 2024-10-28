@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,26 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Search,
-  FileSpreadsheet,
-  BarChart3,
-  Settings,
-  User,
-  Globe,
-  AlertTriangle,
-  Code,
-  ShieldAlert,
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -40,32 +19,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Search,
+  FileSpreadsheet,
+  BarChart3,
+  Code,
+  Globe,
+  AlertTriangle,
+  ShieldAlert,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MainAppPage() {
   const [language, setLanguage] = useState("en");
   const [showModal, setShowModal] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    const hasVisited = localStorage.getItem("hasVisitedBefore");
-    if (!hasVisited) {
-      setShowModal(true);
-      localStorage.setItem("hasVisitedBefore", "true");
-    }
-  }, []);
 
   const handleLanguageChange = (value: string) => {
     setLanguage(value);
-    // In a real application, you would implement language change logic here
-    console.log(`Language changed to ${value}`);
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">KBOB Platform</h1>
-
       <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">KBOB Platform</h1>
         <div className="flex items-center space-x-4">
           <Select value={language} onValueChange={handleLanguageChange}>
             <SelectTrigger className="w-[180px]">
@@ -79,22 +63,10 @@ export default function MainAppPage() {
               <SelectItem value="it">Italiano</SelectItem>
             </SelectContent>
           </Select>
-          <Link href="/settings/general">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-5 w-5" />
-              <span className="sr-only">Settings</span>
-            </Button>
-          </Link>
           <Link href="/admin-console">
             <Button variant="ghost" size="icon">
               <ShieldAlert className="h-5 w-5" />
               <span className="sr-only">Admin Console</span>
-            </Button>
-          </Link>
-          <Link href="/profile/info">
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-              <span className="sr-only">User account</span>
             </Button>
           </Link>
         </div>
@@ -186,15 +158,38 @@ export default function MainAppPage() {
           <Code className="mr-2 h-6 w-6" />
           API Access
         </h2>
-        <p className="mb-4">
-          Integrate KBOB data directly into your applications with our powerful
-          API. Access material information, environmental impact data, and more
-          programmatically. Suitable for large-scale analysis and custom
-          software solutions.
-        </p>
-        <Link href="/api-access">
-          <Button>Get Access</Button>
-        </Link>
+        <div className="space-y-4">
+          <p className="text-muted-foreground">
+            Integrate KBOB data directly into your applications with our
+            comprehensive API:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+            <li>
+              <span className="font-medium text-foreground">
+                Interactive Playground:
+              </span>{" "}
+              Test API endpoints in real-time with our built-in playground
+            </li>
+            <li>
+              <span className="font-medium text-foreground">
+                Complete Documentation:
+              </span>{" "}
+              Detailed guides and examples for all available endpoints
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Data Access:</span>{" "}
+              Environmental impact data, material properties, and more
+            </li>
+          </ul>
+          <div className="pt-4">
+            <Link href="/api-access">
+              <Button>
+                <Code className="mr-2 h-4 w-4" />
+                Explore API
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div className="mt-12">
