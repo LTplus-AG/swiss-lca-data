@@ -3,91 +3,84 @@ import { kv } from "@vercel/kv";
 import { MATERIALS_KEY } from "../../lib/storage";
 
 interface KBOBMaterial {
+  [key: string]: any; // Allow any string key for dynamic metric access
   uuid: string;
   nameDE: string;
   nameFR: string;
-  ubp21Total: number | null;
-  gwpTotal: number | null;
-  biogenicCarbon: number | null;
-}
-
-interface Stats {
-  min: number;
-  max: number;
-  avg: number;
-  median: number;
-  count: number;
-  nonNullCount: number;
-}
-
-function calculateStats(values: (number | null)[]): Stats {
-  const nonNullValues = values.filter((v): v is number => v !== null);
-  const sortedValues = [...nonNullValues].sort((a, b) => a - b);
-
-  const min = sortedValues[0] || 0;
-  const max = sortedValues[sortedValues.length - 1] || 0;
-  const avg =
-    nonNullValues.reduce((sum, val) => sum + val, 0) / nonNullValues.length;
-  const median =
-    sortedValues.length % 2 === 0
-      ? (sortedValues[sortedValues.length / 2 - 1] +
-          sortedValues[sortedValues.length / 2]) /
-        2
-      : sortedValues[Math.floor(sortedValues.length / 2)];
-
-  return {
-    min,
-    max,
-    avg,
-    median,
-    count: values.length,
-    nonNullCount: nonNullValues.length,
-  };
+  density?: string | null;
+  unit?: string;
 }
 
 export async function GET(request: Request) {
   try {
+    // Get the metric from query parameters
     const { searchParams } = new URL(request.url);
-    const metric = searchParams.get("metric") || "ubp";
+    const metric = searchParams.get("metric");
 
+    if (!metric) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Metric parameter is required",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Get materials from KV store
     const materials = await kv.get<KBOBMaterial[]>(MATERIALS_KEY);
 
-    if (!materials) {
-      return NextResponse.json({
-        success: true,
-        stats: null,
-        count: 0,
-      });
+    if (!materials || !materials.length) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No materials found",
+        },
+        { status: 404 }
+      );
     }
 
-    let values: (number | null)[] = [];
-    switch (metric) {
-      case "ubp":
-        values = materials.map((m) => m.ubp21Total);
-        break;
-      case "gwp":
-        values = materials.map((m) => m.gwpTotal);
-        break;
-      case "biogenic":
-        values = materials.map((m) => m.biogenicCarbon);
-        break;
-      default:
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Invalid metric specified",
-          },
-          { status: 400 }
-        );
+    // Filter out materials where the metric value is null
+    const validMaterials = materials.filter(
+      (m) => m[metric] !== null && m[metric] !== undefined
+    );
+
+    if (validMaterials.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No data available for the specified metric",
+        },
+        { status: 404 }
+      );
     }
 
-    const stats = calculateStats(values);
+    // Calculate statistics
+    const values = validMaterials.map((m) => Number(m[metric]));
+    const stats = {
+      min: Math.min(...values),
+      max: Math.max(...values),
+      avg: values.reduce((a, b) => a + b, 0) / values.length,
+      median: getMedian(values),
+      count: materials.length,
+      nonNullCount: validMaterials.length,
+    };
+
+    // Determine the unit based on the metric
+    let unit = "unknown";
+    if (metric.toLowerCase().includes("gwp")) {
+      unit = "kg CO₂ eq";
+    } else if (metric.toLowerCase().includes("ubp")) {
+      unit = "UBP";
+    } else if (metric.toLowerCase().includes("biogenic")) {
+      unit = "kg C";
+    }
 
     return NextResponse.json({
       success: true,
       metric,
       stats,
-      unit: metric === "ubp" ? "UBP" : metric === "gwp" ? "kg CO₂ eq" : "kg C",
+      unit,
     });
   } catch (error) {
     console.error("Error calculating statistics:", error);
@@ -99,4 +92,16 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// Helper function to calculate median
+function getMedian(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  return sorted[middle];
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +40,46 @@ import { Code, Copy, CheckCircle2, Key, ExternalLink } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
+// Add these type definitions at the top of the file
+interface DataTypeValue {
+  type: string;
+  examples?: string[];
+  note?: string;
+}
+
+interface ApiParameter {
+  name: string;
+  type: string;
+  description: string;
+  required?: boolean;
+  options?: Array<{ label: string; value: string }>;
+  defaultValue?: string;
+  min?: number;
+  max?: number;
+}
+
+interface ResponseField {
+  name: string;
+  type: string;
+  description: string;
+}
+
+interface DocumentationSection {
+  overview: string;
+  responseFields: ResponseField[];
+  dataTypes: Record<string, DataTypeValue>;
+  notes: string[];
+  usage?: string;
+}
+
+// Add this interface near the top with other interfaces
+interface Indicator {
+  id: string;
+  label: string;
+  unit: string;
+  description: string;
+}
+
 // Define METRIC_OPTIONS before it's used in API_ENDPOINTS
 const METRIC_OPTIONS = [
   { label: "UBP Total", value: "ubp21Total" },
@@ -51,8 +91,8 @@ const METRIC_OPTIONS = [
   { label: "Biogenic Carbon", value: "biogenicCarbon" },
 ];
 
-// Then define API_ENDPOINTS
-const API_ENDPOINTS = [
+// Move all static endpoints outside the component
+const STATIC_ENDPOINTS = [
   {
     name: "Get Random Materials",
     method: "GET",
@@ -115,24 +155,6 @@ const API_ENDPOINTS = [
     params: [{ name: "uuid", type: "string", description: "Material UUID" }],
   },
   {
-    name: "Get Statistics",
-    method: "GET",
-    endpoint: "/api/kbob/materials/stats",
-    description: "Get statistical information about the materials database",
-    params: [
-      {
-        name: "metric",
-        type: "select",
-        description: "Statistical metric to analyze",
-        options: [
-          { label: "Environmental Impact (UBP)", value: "ubp" },
-          { label: "Carbon Footprint (GWP)", value: "gwp" },
-          { label: "Biogenic Carbon", value: "biogenic" },
-        ],
-      },
-    ],
-  },
-  {
     name: "Get Available Units",
     method: "GET",
     endpoint: "/api/kbob/materials/units",
@@ -178,9 +200,9 @@ const API_ENDPOINTS = [
 ];
 
 const API_PLANS = [
-  { name: "Basic", requests: "500", price: "50.-" },
-  { name: "Pro", requests: "10,000", price: "200.-" },
-  { name: "Enterprise", requests: "Unlimited", price: "Get in touch" },
+  { name: "Basic", requests: "500 requests per month" },
+  { name: "Pro", requests: "10,000 requests per month" },
+  { name: "Enterprise", requests: "Unlimited requests per month" },
 ];
 
 // Add more detailed response examples
@@ -742,7 +764,7 @@ const DOCUMENTATION_SECTIONS = {
 };
 
 export default function ApiAccessPage() {
-  const [selectedEndpoint, setSelectedEndpoint] = useState(API_ENDPOINTS[0]);
+  const [selectedEndpoint, setSelectedEndpoint] = useState(STATIC_ENDPOINTS[0]);
   const [params, setParams] = useState<Record<string, string>>({});
   const [response, setResponse] = useState("");
   const [copied, setCopied] = useState(false);
@@ -755,6 +777,62 @@ export default function ApiAccessPage() {
     status: "idle" | "success" | "error";
     message?: string;
   }>({ status: "idle" });
+  const [indicators, setIndicators] = useState<Indicator[]>([]);
+
+  // Use useMemo to create API_ENDPOINTS that depends on indicators
+  const API_ENDPOINTS = useMemo(
+    () => [
+      ...STATIC_ENDPOINTS,
+      {
+        name: "Get Statistics",
+        method: "GET",
+        endpoint: "/api/kbob/materials/stats",
+        description: "Get statistical information about the materials database",
+        params: [
+          {
+            name: "metric",
+            type: "select",
+            description: "Statistical metric to analyze",
+            options: indicators.map((indicator) => ({
+              label: indicator.label,
+              value: indicator.id,
+            })),
+            required: true,
+          },
+        ],
+      },
+      // ... rest of the endpoints ...
+    ],
+    [indicators]
+  );
+
+  // Update selectedEndpoint when API_ENDPOINTS changes
+  useEffect(() => {
+    const currentEndpointName = selectedEndpoint.name;
+    const newEndpoint = API_ENDPOINTS.find(
+      (e) => e.name === currentEndpointName
+    );
+    if (newEndpoint) {
+      setSelectedEndpoint(newEndpoint);
+    }
+  }, [API_ENDPOINTS, selectedEndpoint.name]);
+
+  // Add useEffect to fetch indicators when component mounts
+  useEffect(() => {
+    const fetchIndicators = async () => {
+      try {
+        const response = await fetch("/api/kbob/indicators");
+        const data = await response.json();
+        if (data.success && data.indicators) {
+          setIndicators(data.indicators);
+        }
+      } catch (error) {
+        console.error("Failed to fetch indicators:", error);
+      }
+    };
+
+    fetchIndicators();
+  }, []);
 
   // Add useEffect to set initial random count
   useEffect(() => {
@@ -875,10 +953,17 @@ fetch('${fullUrl}', {
     }
   };
 
+  // Add a function to handle the request access
   const handleGetApiAccess = () => {
-    // In a real application, you would implement the logic to process the API plan request
-    console.log(`Requested API plan: ${selectedPlan}`);
-    setShowApiPlanModal(false);
+    const selectedPlanDetails = API_PLANS.find((p) => p.name === selectedPlan);
+    if (!selectedPlanDetails) return;
+
+    const subject = encodeURIComponent(`${selectedPlan} API Access Request`);
+    const body = encodeURIComponent(
+      `Hello,\n\nI would like to request access to the ${selectedPlan} API plan (${selectedPlanDetails.requests}).\n\nBest regards`
+    );
+
+    window.location.href = `mailto:info@lt.plus?subject=${subject}&body=${body}`;
   };
 
   // Update the fetchRandomUUID function to get multiple unique UUIDs
@@ -1275,20 +1360,17 @@ fetch('${fullUrl}', {
                           {Object.entries(
                             DOCUMENTATION_SECTIONS["Get All Materials"]
                               .dataTypes
-                          ).map(([key, value]) => (
+                          ).map(([key, value]: [string, DataTypeValue]) => (
                             <div key={key} className="border rounded-md p-3">
                               <h5 className="font-medium mb-2">{key}</h5>
-                              {value.examples &&
-                                "examples" in value &&
-                                "note" in value && ( // Ensure both 'examples' and 'note' exist
-                                  <div className="bg-secondary/50 p-2 rounded-sm text-sm">
-                                    Examples:{" "}
-                                    {Array.isArray(value.examples) &&
-                                      value.examples
-                                        .map((ex) => `"${ex}"`)
-                                        .join(", ")}
-                                  </div>
-                                )}
+                              {value.examples && (
+                                <div className="bg-secondary/50 p-2 rounded-sm text-sm">
+                                  Examples:{" "}
+                                  {value.examples
+                                    .map((ex: string) => `"${ex}"`)
+                                    .join(", ")}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1342,7 +1424,7 @@ fetch('${fullUrl}', {
                           <div>
                             <h4 className="font-semibold mb-2">Parameters</h4>
                             <div className="border rounded-md divide-y">
-                              {endpoint.params.map((param) => (
+                              {endpoint.params.map((param: ApiParameter) => (
                                 <div key={param.name} className="p-3">
                                   <div className="flex items-center space-x-2 mb-1">
                                     <code className="bg-secondary px-2 py-0.5 rounded text-sm">
@@ -1364,7 +1446,12 @@ fetch('${fullUrl}', {
                                     <div className="text-xs bg-secondary/50 p-2 rounded-sm">
                                       Valid values:{" "}
                                       {param.options
-                                        .map((o) => `"${o.value}"`)
+                                        .map(
+                                          (o: {
+                                            label: string;
+                                            value: string;
+                                          }) => `"${o.value}"`
+                                        )
                                         .join(", ")}
                                     </div>
                                   )}
@@ -1459,7 +1546,7 @@ fetch('${fullUrl}', {
                   <RadioGroupItem value={plan.name} id={plan.name} />
                   <Label htmlFor={plan.name}>
                     <span className="font-semibold">{plan.name}</span> -{" "}
-                    {plan.requests} requests per month: {plan.price}
+                    {plan.requests}
                   </Label>
                 </div>
               ))}
