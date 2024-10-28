@@ -49,18 +49,18 @@ export default function MainAppPage() {
         <AlertDescription>
           We provide access to environmental impact material data sourced from
           open data published by KBOB (Koordinationskonferenz der Bau- und
-          Liegenschaftsorgane der öffentlichen Bauherren KBOB), a Swiss
-          government entity. This data is not created or verified by us, and we
-          are not responsible for its accuracy, completeness, or reliability.
-          Use the information for reference purposes only and verify critical
-          data from primary sources. For more information, visit{" "}
+          Liegenschaftsorgane der öffentlichen Bauherren), a Swiss government
+          entity. This data is not created or verified by us, and we are not
+          responsible for its accuracy, completeness, or reliability. Use the
+          information for reference purposes only and verify critical data from
+          primary sources. For more information, visit{" "}
           <a
             href="https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich"
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium underline underline-offset-4"
           >
-            KBOB:Ökobilanzdaten im Baubereich
+            KBOB: Ökobilanzdaten im Baubereich
           </a>
           .
         </AlertDescription>
