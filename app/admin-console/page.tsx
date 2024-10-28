@@ -25,11 +25,7 @@ import {
   Link,
   Loader2,
 } from "lucide-react";
-import {
-  setMonitoringLink,
-  getMonitoringLink,
-  getLastIngestionTime,
-} from "@/lib/kbob-service";
+import { setMonitoringLink, getMonitoringLink } from "@/lib/kbob-service";
 import { KbobDataTable } from "@/components/materials/preview-data-table";
 
 export default function AdminConsole() {

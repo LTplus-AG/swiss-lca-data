@@ -56,11 +56,12 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { Check, Zap } from "lucide-react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 // Add these type definitions at the top of the file
 interface DataTypeValue {
   type: string;
-  examples?: string[];
+  examples?: string[]; // Make examples optional
   note?: string;
 }
 
@@ -81,12 +82,14 @@ interface ResponseField {
   description: string;
 }
 
+// Update the DocumentationSection interface to handle all possible section types
 interface DocumentationSection {
-  overview: string;
+  overview?: string; // Make overview optional
   responseFields: ResponseField[];
   dataTypes: Record<string, DataTypeValue>;
   notes: string[];
   usage?: string;
+  description?: Array<{ title: string; content: string }>; // Make description optional
 }
 
 // Define METRIC_OPTIONS before it's used in API_ENDPOINTS
@@ -164,24 +167,6 @@ const API_ENDPOINTS = [
     params: [{ name: "uuid", type: "string", description: "Material UUID" }],
   },
   {
-    name: "Get Statistics",
-    method: "GET",
-    endpoint: "/api/kbob/materials/stats",
-    description: "Get statistical information about the materials database",
-    params: [
-      {
-        name: "metric",
-        type: "select",
-        description: "Statistical metric to analyze",
-        options: [
-          { label: "Environmental Impact (UBP)", value: "ubp" },
-          { label: "Carbon Footprint (GWP)", value: "gwp" },
-          { label: "Biogenic Carbon", value: "biogenic" },
-        ],
-      },
-    ],
-  },
-  {
     name: "Get Available Units",
     method: "GET",
     endpoint: "/api/kbob/materials/units",
@@ -232,7 +217,6 @@ const API_PLANS = [
   { name: "Enterprise", requests: "Unlimited", price: "Get in touch" },
 ];
 
-// Add more detailed response examples
 const RESPONSE_EXAMPLES = {
   "Get All Materials": `{
   "success": true,
@@ -390,6 +374,37 @@ const RESPONSE_EXAMPLES = {
 
 // Add a new section for Key Concepts in the documentation
 const DOCUMENTATION_SECTIONS = {
+  "API Access Guide": {
+    responseFields: [],
+    dataTypes: {},
+    notes: [],
+    usage: "",
+    description: [
+      {
+        title: "Authentication",
+        content:
+          "The API uses JWT Bearer tokens for authentication. Tokens must be included in the Authorization header of each request.",
+      },
+      {
+        title: "Rate Limiting",
+        content:
+          "If applicable, rate limits are enforced based on the API plan.",
+      },
+      {
+        title: "Usage Tracking",
+        content: "All API requests are logged for usage tracking.",
+      },
+      {
+        title: "Error Handling",
+        content:
+          "The API returns standard HTTP status codes along with error messages in the response body.",
+      },
+      {
+        title: "API Key Management",
+        content: "Revoked keys cannot be used for authentication.",
+      },
+    ],
+  },
   "Get All Materials": {
     overview:
       "Returns the complete list of materials from the KBOB database with all their properties and environmental impact data.",
@@ -788,42 +803,6 @@ const DOCUMENTATION_SECTIONS = {
       "Each indicator has a unique ID that can be used in other API endpoints",
     ],
   },
-  "API Access Guide": {
-    // renamed from "Key Concepts"
-    overview:
-      "Essential information about API authentication, rate limits, and usage guidelines.",
-    responseFields: [],
-    dataTypes: {},
-    notes: [],
-    usage: "",
-    description: [
-      {
-        title: "Authentication",
-        content:
-          "Our API uses JWT Bearer tokens for authentication. Each token contains a keyId, customerId, plan level, and expiration date. Tokens must be included in the Authorization header of each request.",
-      },
-      {
-        title: "Rate Limiting",
-        content:
-          "Rate limits are enforced based on the API plan. Basic users can make 1,000 requests per hour, Professional users can make 10,000 requests per hour, and Enterprise users can make 50,000 requests per hour.",
-      },
-      {
-        title: "Usage Tracking",
-        content:
-          "All API requests are logged for usage tracking. This data can be used for monitoring and billing purposes. Users can request usage reports to see their API consumption.",
-      },
-      {
-        title: "Error Handling",
-        content:
-          "The API returns standard HTTP status codes along with error messages in the response body. Common errors include 401 for unauthorized access and 429 for rate limit exceeded.",
-      },
-      {
-        title: "API Key Management",
-        content:
-          "Users can generate, revoke, and manage their API keys through the API key management service. Revoked keys cannot be used for authentication.",
-      },
-    ],
-  },
 };
 
 export default function ApiAccessPage() {
@@ -1176,26 +1155,10 @@ fetch('${fullUrl}', {
 
   const plans = [
     {
-      name: "Basic",
-      description: "For small projects and testing",
-      price: "49 CHF",
-      features: ["limited API calls", "Basic support"],
-    },
-    {
-      name: "Pro",
-      description: "For growing businesses",
-      price: "99 CHF",
-      features: ["more API calls", "Priority support", "Advanced analytics"],
-    },
-    {
-      name: "Enterprise",
-      description: "For large-scale applications",
-      price: "Custom",
-      features: [
-        "Unlimited API calls",
-        "dedicated support",
-        "Custom integrations",
-      ],
+      name: "Reach out",
+      description: "to get access to the API",
+      price: "Contact us",
+      features: ["Access to all endpoints", "Priority support"],
     },
   ];
 
@@ -1207,19 +1170,27 @@ fetch('${fullUrl}', {
         <CardHeader>
           <CardTitle>Get API Access</CardTitle>
           <CardDescription>
-            Choose a plan to access our API and integrate KBOB data into your
-            applications
+            We're in the early stages of offering API access. Stay tuned for
+            updates!
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            Our API provides programmatic access to the KBOB database, allowing
-            you to integrate sustainable building material data directly into
-            your applications.
+            Our API provides programmatic access to KBOB{" "}
+            <a
+              href="https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich"
+              className="underline"
+            >
+              Ökobilanzdaten im Baubereich
+            </a>
+            , allowing you to integrate sustainable building material data
+            directly into your applications. While we are still finalizing our
+            access plans, we encourage you to reach out for more information and
+            to express your interest.
           </p>
           <Button onClick={() => setShowApiPlanModal(true)}>
             <Key className="mr-2 h-4 w-4" />
-            View API Plans
+            Contact Us for API Access
           </Button>
         </CardContent>
       </Card>
@@ -1319,6 +1290,34 @@ fetch('${fullUrl}', {
             <TabsContent value="documentation">
               <Accordion type="single" collapsible className="w-full">
                 {/* Add Get All Materials as first item */}
+                <AccordionItem value="item-api-access">
+                  <AccordionTrigger>
+                    <div className="flex items-center space-x-2">
+                      <Lock className="h-4 w-4" />
+                      <span className="font-bold text-lg">
+                        API Access Guide
+                      </span>{" "}
+                      {/* Highlighted */}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-6">
+                      {DOCUMENTATION_SECTIONS[
+                        "API Access Guide"
+                      ].description.map((concept, index) => (
+                        <div key={index}>
+                          <h5 className="font-semibold flex items-center gap-2">
+                            {concept.title}
+                          </h5>
+                          <p className="text-muted-foreground mt-2">
+                            {concept.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
                 <AccordionItem value="item-get-all">
                   <AccordionTrigger>
                     <div className="flex items-center space-x-2">
@@ -1388,15 +1387,20 @@ fetch('${fullUrl}', {
                           ).map(([key, value]) => (
                             <div key={key} className="border rounded-md p-3">
                               <h5 className="font-medium mb-2">{key}</h5>
-                              {value.examples && (
+                              {"examples" in value && value.examples ? ( // Type guard for examples
                                 <div className="bg-secondary/50 p-2 rounded-sm text-sm">
                                   Examples:{" "}
-                                  {Array.isArray(value.examples) &&
-                                    value.examples
-                                      .map((ex) => `"${ex}"`)
-                                      .join(", ")}
+                                  {value.examples
+                                    .map((ex: string) => `"${ex}"`)
+                                    .join(", ")}
                                 </div>
-                              )}
+                              ) : null}
+                              {"note" in value &&
+                                value.note && ( // Type guard for note
+                                  <div className="mt-2 text-sm text-muted-foreground">
+                                    Note: {value.note}
+                                  </div>
+                                )}
                             </div>
                           ))}
                         </div>
@@ -1456,9 +1460,15 @@ fetch('${fullUrl}', {
                         <div>
                           <h4 className="font-semibold mb-2">Overview</h4>
                           <p className="text-muted-foreground">
-                            {DOCUMENTATION_SECTIONS[
-                              endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
-                            ]?.overview || endpoint.description}
+                            {(() => {
+                              const section =
+                                DOCUMENTATION_SECTIONS[
+                                  endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
+                                ];
+                              return "overview" in section && section.overview // Type guard for overview
+                                ? section.overview
+                                : endpoint.description;
+                            })()}
                           </p>
                         </div>
 
@@ -1573,53 +1583,6 @@ fetch('${fullUrl}', {
                     </AccordionContent>
                   </AccordionItem>
                 ))}
-
-                {/* Replace the styled API Access Guide section with the original documentation style */}
-                <AccordionItem value="item-api-access">
-                  <AccordionTrigger>
-                    <div className="flex items-center space-x-2">
-                      <Lock className="h-4 w-4" />
-                      <span>API Access Guide</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-6">
-                      <div>
-                        <h4 className="font-semibold mb-2">Overview</h4>
-                        <p className="text-muted-foreground">
-                          {DOCUMENTATION_SECTIONS["API Access Guide"].overview}
-                        </p>
-                      </div>
-                      {DOCUMENTATION_SECTIONS[
-                        "API Access Guide"
-                      ].description.map((concept, index) => (
-                        <div key={index}>
-                          <h5 className="font-semibold flex items-center gap-2">
-                            {concept.title === "Authentication" && (
-                              <Key className="h-4 w-4" />
-                            )}
-                            {concept.title === "Rate Limiting" && (
-                              <AlertCircle className="h-4 w-4" />
-                            )}
-                            {concept.title === "Usage Tracking" && (
-                              <BarChart2 className="h-4 w-4" />
-                            )}
-                            {concept.title === "Error Handling" && (
-                              <AlertCircle className="h-4 w-4" />
-                            )}
-                            {concept.title === "API Key Management" && (
-                              <Key className="h-4 w-4" />
-                            )}
-                            {concept.title}
-                          </h5>
-                          <p className="text-muted-foreground mt-2">
-                            {concept.content}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
               </Accordion>
             </TabsContent>
           </Tabs>
@@ -1627,69 +1590,44 @@ fetch('${fullUrl}', {
       </Card>
 
       <Dialog open={showApiPlanModal} onOpenChange={setShowApiPlanModal}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Choose Your API Plan</DialogTitle>
-            <DialogDescription>
-              Select the plan that best fits your needs. All plans include our
-              core API features.
-            </DialogDescription>
-          </DialogHeader>
-          <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800">
-            <div className="container px-4 md:px-6">
-              <div className="flex flex-col gap-6 mt-12">
-                {plans.map((plan) => (
-                  <Card key={plan.name} className="flex flex-col">
-                    <CardHeader>
-                      <CardTitle>{plan.name}</CardTitle>
-                      <CardDescription>{plan.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                      <div className="text-4xl font-bold mb-4">
-                        {plan.price}
-                      </div>
-                      <ul className="space-y-2">
-                        {plan.features.map((feature) => (
-                          <li key={feature} className="flex items-center">
-                            <Check className="mr-2 h-4 w-4 text-green-500" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Button className="w-full">
-                        {plan.name === "Enterprise"
-                          ? "Contact Sales"
-                          : "Get Started"}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-              <div className="flex flex-col items-center justify-center mt-12 space-y-4 text-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  Need more information about our API plans?
-                </p>
-                <Button variant="outline" size="lg" className="group">
-                  Contact Us
-                  <Zap className="ml-2 h-4 w-4 transition-transform group-hover:rotate-12" />
-                </Button>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Reach out to us at{" "}
-                  <a
-                    href="mailto:info@lt.plus"
-                    className="font-medium underline underline-offset-4"
+        <DialogContent className="flex items-center justify-center max-h-[60vh] overflow-y-auto p-6">
+          <section className="w-full bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg shadow-lg p-6">
+            <div className="flex flex-col gap-4">
+              <DialogTitle className="text-2xl font-bold">
+                Reach out to get access to the API
+              </DialogTitle>
+              <Card className="flex flex-col p-4">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold">
+                    Contact us
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>Access to all endpoints</li>
+                    <li>Priority support</li>
+                  </ul>
+                </CardContent>
+                <CardFooter className="flex flex-col items-center">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="mt-4 w-full"
+                    onClick={() => {
+                      const subject = encodeURIComponent("API Access Inquiry");
+                      const body = encodeURIComponent(
+                        "Hello,\n\nI would like more information about your API plans.\n\nThank you!"
+                      );
+                      window.location.href = `mailto:info@lt.plus?subject=${subject}&body=${body}`;
+                    }}
                   >
                     info@lt.plus
-                  </a>
-                </p>
-              </div>
+                    <Zap className="ml-2 h-4 w-4 transition-transform group-hover:rotate-12" />
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
           </section>
-          <DialogFooter>
-            <Button onClick={() => setShowApiPlanModal(false)}>Close</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

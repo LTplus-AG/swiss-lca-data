@@ -6,6 +6,7 @@ import {
   getBlobContent,
   MATERIALS_KEY,
   LAST_INGESTION_KEY,
+  storeBlobContent,
 } from "@/api/kbob/lib/storage";
 
 const DEFAULT_KBOB_LINK =
@@ -117,6 +118,8 @@ export async function getRawMaterials(): Promise<Record<string, any>[]> {
 
 interface KBOBMaterial {
   id: string;
+  uuid: string;
+  group?: string; // {{ edit_1 }} Made group optional
   nameDE: string;
   nameFR: string;
   density: string | null;
@@ -128,6 +131,24 @@ interface KBOBMaterial {
   gwpProduction: number | null;
   gwpDisposal: number | null;
   biogenicCarbon: number | null;
+  disposalId: string;
+  disposalNameDE: string;
+  disposalNameFR: string;
+  primaryEnergyTotal: number | null;
+  primaryEnergyProductionTotal: number | null;
+  primaryEnergyProductionEnergetic: number | null;
+  primaryEnergyProductionMaterial: number | null;
+  primaryEnergyDisposal: number | null;
+  primaryEnergyRenewableTotal: number | null;
+  primaryEnergyRenewableProductionTotal: number | null;
+  primaryEnergyRenewableProductionEnergetic: number | null;
+  primaryEnergyRenewableProductionMaterial: number | null;
+  primaryEnergyRenewableDisposal: number | null;
+  primaryEnergyNonRenewableTotal: number | null;
+  primaryEnergyNonRenewableProductionTotal: number | null;
+  primaryEnergyNonRenewableProductionEnergetic: number | null;
+  primaryEnergyNonRenewableProductionMaterial: number | null;
+  primaryEnergyNonRenewableDisposal: number | null;
 }
 
 export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
@@ -220,7 +241,6 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
       const material: KBOBMaterial = {
         id,
         uuid: String(row[COLUMN_MAPPING.UUID] || ""),
-        group: String(row[COLUMN_MAPPING.GROUP] || ""),
         nameDE: String(row[COLUMN_MAPPING.NAME_DE] || ""),
         disposalId: String(row[COLUMN_MAPPING.DISPOSAL_ID] || ""),
         disposalNameDE: String(row[COLUMN_MAPPING.DISPOSAL_NAME_DE] || ""),
