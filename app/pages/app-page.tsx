@@ -60,7 +60,7 @@ export default function MainAppPage() {
             rel="noopener noreferrer"
             className="font-medium underline underline-offset-4"
           >
-            KBOB
+            KBOB:Ökobilanzdaten im Baubereich
           </a>
           .
         </AlertDescription>
