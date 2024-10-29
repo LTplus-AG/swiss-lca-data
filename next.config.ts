@@ -9,11 +9,7 @@ const nextConfig: NextConfig = {
     // This will ignore TypeScript errors during builds
     ignoreBuildErrors: true,
   },
-  // There's also a Clerk warning about Edge Runtime
-  experimental: {
-    // This should help with the Clerk Edge Runtime warning
-    serverComponentsExternalPackages: ["@clerk/backend"],
-  },
+  serverExternalPackages: ["@clerk/backend"],
 };
 
 export default nextConfig;
