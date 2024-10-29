@@ -69,6 +69,7 @@ export function FooterComponent() {
             <Link
               href="https://www.linkedin.com/company/ltplusag"
               className="text-gray-400 hover:text-gray-600"
+              target="_blank"
             >
               <Linkedin className="w-5 h-5" />
               <span className="sr-only">LinkedIn</span>
