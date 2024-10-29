@@ -1,8 +1,8 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { middleware as corsMiddleware } from "./middleware/cors"; // Adjust the path as necessary
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export default async function middleware(req: Request) {
+export default async function middleware(req: NextRequest) {
   // Apply CORS middleware
   const corsResponse = corsMiddleware(req);
   if (corsResponse) return corsResponse;
