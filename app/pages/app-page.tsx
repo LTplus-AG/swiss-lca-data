@@ -47,13 +47,14 @@ export default function MainAppPage() {
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Important Information</AlertTitle>
         <AlertDescription>
-          We provide access to environmental impact material data sourced from
-          open data published by KBOB (Koordinationskonferenz der Bau- und
-          Liegenschaftsorgane der öffentlichen Bauherren), a Swiss government
-          entity. This data is not created or verified by us, and we are not
-          responsible for its accuracy, completeness, or reliability. Use the
-          information for reference purposes only and verify critical data from
-          primary sources. For more information, visit{" "}
+          CH LCA data provides access to environmental impact material data
+          sourced from open data published by KBOB (Koordinationskonferenz der
+          Bau- und Liegenschaftsorgane der öffentlichen Bauherren), a Swiss
+          government entity. This data is not created or verified by us, and we
+          are not responsible for its accuracy, completeness, or reliability.
+          Use the information for reference purposes only and always{" "}
+          <strong>verify critical data from primary sources</strong>. For more
+          information, visit{" "}
           <a
             href="https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich"
             target="_blank"
@@ -210,13 +211,13 @@ export default function MainAppPage() {
           </DialogHeader>
           <div className="py-4">
             <p className="mb-4">
-              We provide access to environmental impact material data sourced
-              from open data published by KBOB (Koordinationskonferenz der Bau-
-              und Liegenschaftsorgane der öffentlichen Bauherren KBOB), a Swiss
-              government entity. This data is not created or verified by us, and
-              we are not responsible for its accuracy, completeness, or
+              CH LCA data provides access to environmental impact material data
+              sourced from open data published by KBOB (Koordinationskonferenz
+              der Bau- und Liegenschaftsorgane der öffentlichen Bauherren KBOB),
+              a Swiss government entity. This data is not created or verified by
+              us, and we are not responsible for its accuracy, completeness, or
               reliability. Use the information for reference purposes only and
-              verify critical data from primary sources.
+              always <strong>verify critical data from primary sources</strong>.
             </p>
           </div>
           <DialogFooter>

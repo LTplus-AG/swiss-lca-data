@@ -62,8 +62,8 @@ const versions = ["2021", "2022", "2023"]; // Keep this until we have version da
 // Add this interface for chart data type
 interface ChartDataItem {
   name: string;
-  version: string; // Changed from version?: string; to version: string;
-  [key: string]: string | number; // Change here to remove undefined
+  version: string;
+  [key: string]: string | number;
 }
 
 // Add new interface and state

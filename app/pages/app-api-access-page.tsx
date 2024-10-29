@@ -49,6 +49,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { Check, Zap } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ApiAccessDialog } from "@/components/ui/api-access-dialog"; // Use curly braces for named export
 
 // Add these type definitions at the top of the file
 interface DataTypeValue {
@@ -201,12 +202,6 @@ const API_ENDPOINTS = [
     description: "Get all available environmental impact indicators",
     params: [], // No parameters needed
   },
-];
-
-const API_PLANS = [
-  { name: "Basic", requests: "500", price: "50.-" },
-  { name: "Pro", requests: "10,000", price: "200.-" },
-  { name: "Enterprise", requests: "Unlimited", price: "Get in touch" },
 ];
 
 const RESPONSE_EXAMPLES = {
@@ -1144,15 +1139,6 @@ fetch('${fullUrl}', {
     );
   };
 
-  const plans = [
-    {
-      name: "Reach out",
-      description: "to get access to the API",
-      price: "Contact us",
-      features: ["Access to all endpoints", "Priority support"],
-    },
-  ];
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">API Access</h1>
@@ -1181,7 +1167,7 @@ fetch('${fullUrl}', {
           </p>
           <Button onClick={() => setShowApiPlanModal(true)}>
             <Key className="mr-2 h-4 w-4" />
-            Contact Us for API Access
+            API Access
           </Button>
         </CardContent>
       </Card>
@@ -1581,45 +1567,7 @@ fetch('${fullUrl}', {
       </Card>
 
       <Dialog open={showApiPlanModal} onOpenChange={setShowApiPlanModal}>
-        <DialogContent className="flex items-center justify-center max-h-[60vh] overflow-y-auto p-6">
-          <section className="w-full bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg shadow-lg p-6">
-            <div className="flex flex-col gap-4">
-              <DialogTitle className="text-2xl font-bold">
-                Reach out to get access to the API
-              </DialogTitle>
-              <Card className="flex flex-col p-4">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">
-                    Contact us
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <ul className="list-disc pl-5 space-y-2">
-                    <li>Access to all endpoints</li>
-                    <li>Priority support</li>
-                  </ul>
-                </CardContent>
-                <CardFooter className="flex flex-col items-center">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="mt-4 w-full"
-                    onClick={() => {
-                      const subject = encodeURIComponent("API Access Inquiry");
-                      const body = encodeURIComponent(
-                        "Hello,\n\nI would like more information about your API plans.\n\nThank you!"
-                      );
-                      window.location.href = `mailto:info@lt.plus?subject=${subject}&body=${body}`;
-                    }}
-                  >
-                    info@lt.plus
-                    <Zap className="ml-2 h-4 w-4 transition-transform group-hover:rotate-12" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </section>
-        </DialogContent>
+        <ApiAccessDialog /> {/* Use the new component here */}
       </Dialog>
     </div>
   );
