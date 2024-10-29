@@ -61,6 +61,7 @@ export function FooterComponent() {
             <Link
               href="https://www.lt.plus"
               className="text-gray-400 hover:text-gray-600"
+              target="_blank"
             >
               <Globe className="w-5 h-5" />
               <span className="sr-only">Website</span>
