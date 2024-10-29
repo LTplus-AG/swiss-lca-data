@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, Linkedin, Mail } from "lucide-react";
+import { useState } from "react";
+import { Globe, Linkedin, Mail, Github } from "lucide-react";
 
 export function FooterComponent() {
+  const [showPopup, setShowPopup] = useState(false);
+
   return (
     <footer className="bg-white text-gray-600 py-4 border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -76,6 +79,26 @@ export function FooterComponent() {
               <Mail className="w-5 h-5" />
               <span className="sr-only">Email</span>
             </Link>
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowPopup(true)}
+                onMouseLeave={() => setShowPopup(false)}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                aria-label="GitHub Repository"
+              >
+                <Github className="w-5 h-5" />
+              </button>
+              {showPopup && (
+                <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-sm text-gray-700">
+                  <p className="font-semibold mb-2">🚧 Under Construction 🚧</p>
+                  <p>Some clean up still outstanding....</p>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Check back soon for our GitHub repo!
+                  </div>
+                  <div className="absolute bottom-0 right-4 transform translate-y-1/2 w-3 h-3 bg-white border-b border-r border-gray-200 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
