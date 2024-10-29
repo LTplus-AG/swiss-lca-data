@@ -1,15 +1,21 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { middleware as corsMiddleware } from "./middleware/cors"; // Adjust the path as necessary
 import { NextResponse } from "next/server";
 
-const isAdminRoute = createRouteMatcher(["/app-admin-console"]);
+export default async function middleware(req: Request) {
+  // Apply CORS middleware
+  const corsResponse = corsMiddleware(req);
+  if (corsResponse) return corsResponse;
 
-export default clerkMiddleware((auth, req) => {
   // Protect the admin console route
-  if (isAdminRoute(req) && auth().sessionClaims?.metadata?.role !== "admin") {
+  const isAdminRoute = req.nextUrl.pathname.startsWith("/app-admin-console");
+  if (isAdminRoute && !req.headers.get("Authorization")) {
     const url = new URL("/", req.url);
     return NextResponse.redirect(url);
   }
-});
+
+  return clerkMiddleware(req);
+}
 
 export const config = {
   matcher: [

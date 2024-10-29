@@ -855,8 +855,7 @@ export default function ApiAccessPage() {
 
     const fullUrl = `\${baseUrl}${url}${queryParams ? `?${queryParams}` : ""}`;
 
-    return `// Replace baseUrl with your API base URL
-const baseUrl = "https://your-api-domain.com";
+    return `const baseUrl = "https://lcadata.ch"; 
 
 fetch('${fullUrl}', {
   method: '${selectedEndpoint.method}',

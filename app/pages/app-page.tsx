@@ -218,7 +218,6 @@ export default function MainAppPage() {
               reliability. Use the information for reference purposes only and
               verify critical data from primary sources.
             </p>
-            {/* Remove the bullet points list since it's redundant with the new text */}
           </div>
           <DialogFooter>
             <Button onClick={() => setShowModal(false)}>I Understand</Button>
