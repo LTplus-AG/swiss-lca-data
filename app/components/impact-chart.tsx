@@ -82,11 +82,11 @@ export function ImpactChart({
 
   const getColorForIndex = (index: number) => {
     const colors = [
-      "hsl(var(--chart-1))",
-      "hsl(var(--chart-2))",
-      "hsl(var(--chart-3))",
-      "hsl(var(--chart-4))",
-      "hsl(var(--chart-5))",
+      "hsl(var(--primary))", // Primary theme color
+      "hsl(220 70% 50%)", // Blue
+      "hsl(142 71% 45%)", // Green
+      "hsl(48 96% 53%)", // Yellow
+      "hsl(280 65% 60%)", // Purple
     ];
     return colors[index % colors.length];
   };

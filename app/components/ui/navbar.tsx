@@ -25,6 +25,7 @@ import {
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation"; // Note: using next/navigation, not next/router
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const navItems = [
   { name: "Home", href: "/", icon: Home },
@@ -69,11 +70,11 @@ export function Navbar() {
           {/* Left side - Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0">
-              <span className="text-2xl font-bold text-primary flex items-center">
+              <span className="text-2xl font-bold text-foreground flex items-center">
                 <span className="bg-red-500 p-0.5 rounded-sm flex items-center justify-center">
                   <Cross className="h-4 w-4 text-white transform rotate-12" />
                 </span>
-                <span className="ml-2">LCA data</span>
+                <span className="ml-3">LCA data</span>
               </span>
             </Link>
           </div>
@@ -103,7 +104,7 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Right side - Language & User */}
+          {/* Right side - Language, Theme & User */}
           <div className="flex items-center space-x-4">
             <Select value={language} onValueChange={handleLanguageChange}>
               <SelectTrigger className="w-[180px]">
@@ -123,6 +124,8 @@ export function Navbar() {
                 </SelectItem>
               </SelectContent>
             </Select>
+
+            <ThemeToggle />
 
             <SignedIn>
               <UserButton

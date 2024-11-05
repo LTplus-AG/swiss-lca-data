@@ -5,6 +5,7 @@ import { Navbar } from "@/components/ui/navbar";
 import { FooterComponent } from "@/components/ui/footer";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/react";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -29,17 +30,24 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <head>
           <title>CH LCA data</title>
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
         >
-          <Navbar />
-          {children}
-          <FooterComponent />
-          <Analytics />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Navbar />
+            {children}
+            <FooterComponent />
+            <Analytics />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

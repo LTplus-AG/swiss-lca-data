@@ -648,14 +648,14 @@ export function MaterialsTableComponent() {
             </div>
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant="default"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={loading || page === 1}
               >
                 Previous
               </Button>
               <Button
-                variant="outline"
+                variant="default"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={loading || page === totalPages}
               >
