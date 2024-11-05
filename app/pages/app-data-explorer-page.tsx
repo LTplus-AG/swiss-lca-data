@@ -20,18 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { ImpactChart } from "@/components/impact-chart";
 import { Search } from "lucide-react";
 
 interface KBOBMaterial {
@@ -57,7 +46,7 @@ const impactCategories = [
   { label: "Primary Energy", value: "primaryEnergy" }, // Note: Update when available
 ];
 
-const versions = ["2021", "2022", "2023"]; // Keep this until we have version data from API
+const versions = ["1.0", "4.0", "5.0", "6.0"]; // Keep this until we have version data from API
 
 // Add this interface for chart data type
 interface ChartDataItem {
@@ -222,70 +211,6 @@ export default function DataExplorerPage() {
     }
   }, [selectedMaterials, selectedVersions, selectedImpact, materials]);
 
-  const renderChart = () => {
-    if (!selectedMaterials.length) {
-      return (
-        <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-          Select materials to view comparison
-        </div>
-      );
-    }
-
-    if (selectedVersions.length === 1) {
-      return (
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={chartData} margin={{ bottom: 90 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="name"
-              tick={{ fontSize: 12 }}
-              interval={0}
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar
-              dataKey={selectedImpact}
-              fill="#8884d8"
-              name={
-                impactCategories.find((c) => c.value === selectedImpact)
-                  ?.label || selectedImpact
-              }
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      );
-    }
-
-    return (
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          {selectedMaterials.map((materialId, index) => {
-            const material = materials.find((m) => m.id === materialId);
-            return material ? (
-              <Line
-                key={material.id}
-                type="monotone"
-                dataKey={material.nameDE}
-                stroke={`hsl(${(index * 137.5) % 360}, 70%, 50%)`}
-                strokeWidth={2}
-                name={material.nameDE}
-              />
-            ) : null;
-          })}
-        </LineChart>
-      </ResponsiveContainer>
-    );
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Data Explorer</h1>
@@ -402,9 +327,6 @@ export default function DataExplorerPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Impact Comparison
-            <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
-              Charts Coming Soon
-            </span>
           </CardTitle>
           <CardDescription>
             {selectedMaterials.length === 0
@@ -414,19 +336,16 @@ export default function DataExplorerPage() {
               : "Compare materials across versions"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="min-h-[400px] relative">
-          {loading ? (
-            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-              Loading materials data...
-            </div>
-          ) : (
-            <div className="opacity-50">{renderChart()}</div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-            <div className="text-lg font-medium text-muted-foreground">
-              Chart Visualization Coming Soon
-            </div>
-          </div>
+        <CardContent className="min-h-[400px] relative p-0">
+          <ImpactChart
+            chartData={chartData}
+            selectedMaterials={selectedMaterials}
+            selectedVersions={selectedVersions}
+            selectedImpact={selectedImpact}
+            materials={materials}
+            impactCategories={impactCategories}
+            loading={loading}
+          />
         </CardContent>
       </Card>
 

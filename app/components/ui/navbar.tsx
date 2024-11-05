@@ -29,8 +29,8 @@ import { useRouter } from "next/navigation"; // Note: using next/navigation, not
 const navItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Materials", href: "/materials", icon: Search },
-  { name: "BIM Integration", href: "/bim-integration", icon: FileSpreadsheet },
   { name: "Data Explorer", href: "/data-explorer", icon: BarChart2 },
+  { name: "BIM Integration", href: "/bim-integration", icon: FileSpreadsheet },
   { name: "API Access", href: "/api-access", icon: Code },
 ];
 

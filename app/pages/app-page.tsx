@@ -92,28 +92,6 @@ export default function MainAppPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              BIM Integration
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>
-              Seamlessly integrate KBOB data with your BIM software. Configure
-              mapping settings, export data in compatible formats, and enhance
-              your building information models with accurate environmental
-              impact data.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Link href="/bim-integration">
-              <Button>Configure BIM</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
               <BarChart3 className="mr-2 h-4 w-4" />
               Data Explorer
             </CardTitle>
@@ -129,6 +107,28 @@ export default function MainAppPage() {
           <CardFooter>
             <Link href="/data-explorer">
               <Button>Explore Data</Button>
+            </Link>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              BIM Integration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>
+              Seamlessly integrate KBOB data with your BIM software. Configure
+              mapping settings, export data in compatible formats, and enhance
+              your building information models with accurate environmental
+              impact data.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Link href="/bim-integration">
+              <Button>Configure BIM</Button>
             </Link>
           </CardFooter>
         </Card>
@@ -185,16 +185,17 @@ export default function MainAppPage() {
           <CardContent>
             <ul className="list-disc pl-5 space-y-2">
               <li>
+                Data Explorer now includes interactive charts and
+                manufacturer-specific data. Historical data comparison charts
+                coming next! 📊
+              </li>
+              <li>
                 API Playground & Documentation, Material Search & BIM
                 Integration 🚀
               </li>
               <li>
-                Incl. Excel, CSV and JSON export functionality as a first step,
-                Speckle Connector for true BIM integration will be next 🤝
-              </li>
-              <li>
-                Data Explorer with advanced comparison tools & visualization
-                options coming soon, stay tuned...
+                Excel, CSV and JSON export functionality available, Speckle
+                Connector for true BIM integration will be next 🤝
               </li>
             </ul>
           </CardContent>
