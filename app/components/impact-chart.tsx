@@ -59,10 +59,6 @@ export function ImpactChart({
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Impact Comparison</CardTitle>
-          <CardDescription>Compare materials across versions</CardDescription>
-        </CardHeader>
         <CardContent>
           <div className="h-[400px] w-full">
             <Skeleton className="h-full w-full" />
@@ -75,10 +71,6 @@ export function ImpactChart({
   if (!chartData.length) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Impact Comparison</CardTitle>
-          <CardDescription>Compare materials across versions</CardDescription>
-        </CardHeader>
         <CardContent>
           <div className="flex h-[400px] items-center justify-center text-muted-foreground">
             Select materials to compare
@@ -100,13 +92,9 @@ export function ImpactChart({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Impact Comparison</CardTitle>
-        <CardDescription>Compare materials across versions</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="relative">
+    <div className="w-full">
+      <CardContent className="p-0">
+        <div className="relative w-full">
           <ChartContainer
             config={
               isSingleVersion
@@ -131,12 +119,12 @@ export function ImpactChart({
                     })
                   )
             }
-            className="h-[400px]"
+            className="h-[400px] w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
-                margin={{ top: 20, right: 0, left: 0, bottom: 70 }}
+                margin={{ top: 20, right: 20, left: 20, bottom: 70 }}
                 barSize={80}
                 barGap={4}
               >
@@ -210,6 +198,6 @@ export function ImpactChart({
           )}
         </div>
       </CardContent>
-    </Card>
+    </div>
   );
 }

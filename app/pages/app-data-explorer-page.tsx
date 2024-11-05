@@ -68,7 +68,9 @@ export default function DataExplorerPage() {
   const [materials, setMaterials] = useState<KBOBMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
-  const [selectedVersions, setSelectedVersions] = useState<string[]>(["2023"]);
+  const [selectedVersions, setSelectedVersions] = useState<string[]>([
+    "aktuelle Version",
+  ]);
   const [selectedImpact, setSelectedImpact] = useState("gwpTotal");
   const [searchTerm, setSearchTerm] = useState("");
   // Add new state for indicators
@@ -329,10 +331,8 @@ export default function DataExplorerPage() {
             Impact Comparison
           </CardTitle>
           <CardDescription>
-            {selectedMaterials.length === 0
-              ? "Select materials to compare"
-              : selectedVersions.length === 1
-              ? `Compare materials for KBOB ${selectedVersions[0]}`
+            {selectedVersions.length === 1
+              ? `Compare materials for ${selectedVersions[0]}`
               : "Compare materials across versions"}
           </CardDescription>
         </CardHeader>
