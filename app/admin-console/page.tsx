@@ -76,6 +76,12 @@ export function KbobAdminConsole() {
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [showKbobData, setShowKbobData] = useState(false);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [version, setVersion] = useState("");
+  const [datePublished, setDatePublished] = useState("");
 
   const fetchMonitoringLink = async () => {
     try {
@@ -170,6 +176,49 @@ export function KbobAdminConsole() {
     }
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] || null;
+    setFile(selectedFile);
+  };
+
+  const handleFileUpload = async () => {
+    if (!file || !version || !datePublished) {
+      setUploadError(
+        "Please fill out all fields: file, version, and date published."
+      );
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("version", version);
+    formData.append("datePublished", datePublished);
+
+    try {
+      const response = await fetch("/api/kbob/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("File upload failed.");
+      }
+
+      const result = await response.json();
+      setUploadSuccess(
+        `Successfully uploaded ${result.materialsCount} materials.`
+      );
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -251,6 +300,27 @@ export function KbobAdminConsole() {
                 )}
                 {isIngesting ? "Ingesting..." : "Trigger Manual Ingestion"}
               </Button>
+            </div>
+
+            <div>
+              <input type="file" accept=".xlsx" onChange={handleFileChange} />
+              <input
+                type="text"
+                placeholder="Version (e.g., 5.0)"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Date Published (e.g., 20.6.2024)"
+                value={datePublished}
+                onChange={(e) => setDatePublished(e.target.value)}
+              />
+              <Button onClick={handleFileUpload} disabled={isUploading}>
+                {isUploading ? "Uploading..." : "Upload File"}
+              </Button>
+              {uploadError && <div className="error">{uploadError}</div>}
+              {uploadSuccess && <div className="success">{uploadSuccess}</div>}
             </div>
 
             {error && (

@@ -169,6 +169,9 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
     blankrows: false,
   });
 
+  // Log raw data for debugging
+  console.log("Raw Data:", rawData);
+
   const headerRowIndex = rawData.findIndex((row) =>
     row[0]?.toString().toLowerCase().includes("id-nummer")
   );
@@ -229,30 +232,37 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
 
   for (let i = dataStartIndex; i < rawData.length; i++) {
     const row = rawData[i] as string[];
-    if (!row?.[COLUMN_MAPPING.ID]) continue;
+    const id = row[COLUMN_MAPPING.ID]?.toString().trim();
+    const uuid = row[COLUMN_MAPPING.UUID]?.toString().trim();
 
-    const id = row[COLUMN_MAPPING.ID].toString().trim();
-    if (!id.match(/^\d+\.\d+$/)) {
-      console.log("Skipping row with invalid ID:", id);
+    // Only validate UUID format
+    if (!isUUID(uuid)) {
+      console.log(`Skipping row ${i + 1} - Invalid UUID format:`, {
+        id,
+        uuid,
+        row: i + 1,
+      });
       continue;
     }
 
     try {
       const material: KBOBMaterial = {
         id,
-        uuid: String(row[COLUMN_MAPPING.UUID] || ""),
+        uuid,
         nameDE: String(row[COLUMN_MAPPING.NAME_DE] || ""),
+        nameFR: String(row[COLUMN_MAPPING.NAME_FR] || ""),
         disposalId: String(row[COLUMN_MAPPING.DISPOSAL_ID] || ""),
         disposalNameDE: String(row[COLUMN_MAPPING.DISPOSAL_NAME_DE] || ""),
+        disposalNameFR: String(row[COLUMN_MAPPING.DISPOSAL_NAME_FR] || ""),
         density: String(row[COLUMN_MAPPING.DENSITY] || null),
         unit: String(row[COLUMN_MAPPING.UNIT] || ""),
-
-        // UBP Values
         ubp21Total: parseNumber(row[COLUMN_MAPPING.UBP_TOTAL]),
         ubp21Production: parseNumber(row[COLUMN_MAPPING.UBP_PRODUCTION]),
         ubp21Disposal: parseNumber(row[COLUMN_MAPPING.UBP_DISPOSAL]),
-
-        // Primary Energy Total
+        gwpTotal: parseNumber(row[COLUMN_MAPPING.GWP_TOTAL]),
+        gwpProduction: parseNumber(row[COLUMN_MAPPING.GWP_PRODUCTION]),
+        gwpDisposal: parseNumber(row[COLUMN_MAPPING.GWP_DISPOSAL]),
+        biogenicCarbon: parseNumber(row[COLUMN_MAPPING.BIOGENIC_CARBON]),
         primaryEnergyTotal: parseNumber(
           row[COLUMN_MAPPING.PRIMARY_ENERGY_TOTAL]
         ),
@@ -268,8 +278,6 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
         primaryEnergyDisposal: parseNumber(
           row[COLUMN_MAPPING.PRIMARY_ENERGY_DISPOSAL]
         ),
-
-        // Primary Energy Renewable
         primaryEnergyRenewableTotal: parseNumber(
           row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_TOTAL]
         ),
@@ -285,8 +293,6 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
         primaryEnergyRenewableDisposal: parseNumber(
           row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_DISPOSAL]
         ),
-
-        // Primary Energy Non-Renewable
         primaryEnergyNonRenewableTotal: parseNumber(
           row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_TOTAL]
         ),
@@ -302,54 +308,17 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
         primaryEnergyNonRenewableDisposal: parseNumber(
           row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_DISPOSAL]
         ),
-
-        // GWP Values
-        gwpTotal: parseNumber(row[COLUMN_MAPPING.GWP_TOTAL]),
-        gwpProduction: parseNumber(row[COLUMN_MAPPING.GWP_PRODUCTION]),
-        gwpDisposal: parseNumber(row[COLUMN_MAPPING.GWP_DISPOSAL]),
-
-        // Biogenic Carbon
-        biogenicCarbon: parseNumber(row[COLUMN_MAPPING.BIOGENIC_CARBON]),
-
-        // French translations
-        nameFR: String(row[COLUMN_MAPPING.NAME_FR] || ""),
-        disposalNameFR: String(row[COLUMN_MAPPING.DISPOSAL_NAME_FR] || ""),
       };
 
-      // Log for debugging
-      console.log(`Processing row ${i}:`, {
-        id: material.id,
-        nameDE: material.nameDE,
-        nameFR: material.nameFR,
-        unit: material.unit,
-        values: {
-          ubp21: {
-            total: material.ubp21Total,
-            production: material.ubp21Production,
-            disposal: material.ubp21Disposal,
-          },
-          gwp: {
-            total: material.gwpTotal,
-            production: material.gwpProduction,
-            disposal: material.gwpDisposal,
-          },
-        },
-      });
-
-      // Validate the material has actual names (not UUIDs or empty strings)
-      if (
-        material.nameDE &&
-        material.nameFR &&
-        !isUUID(material.nameDE) &&
-        !isUUID(material.nameFR) &&
-        material.nameDE.length > 2 &&
-        material.nameFR.length > 2
-      ) {
+      // Only validate German name exists and is not too short
+      if (material.nameDE && material.nameDE.length > 2) {
         materials.push(material);
       } else {
-        console.log(`Skipping invalid material ${id} - Invalid names:`, {
+        console.log(`Skipping material ${id} - Invalid German name:`, {
           nameDE: material.nameDE,
           nameFR: material.nameFR,
+          row: i + 1,
+          allData: material,
         });
       }
     } catch (error) {
@@ -382,9 +351,9 @@ function parseNumber(value: any): number | null {
 
 function isUUID(str: string): boolean {
   if (!str) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    str.trim()
-  );
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str.trim());
 }
 
 // Add these new functions
