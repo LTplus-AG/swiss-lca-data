@@ -6,19 +6,17 @@ export const LAST_INGESTION_KEY = `${STORAGE_PREFIX}/last_ingestion.txt`;
 export const MATERIALS_KEY = `${STORAGE_PREFIX}/materials.json`;
 
 // Add this constant for the base URL
-const BLOB_BASE_URL =
-  process.env.NEXT_PUBLIC_BLOB_STORE_URL ||
-  "https://your-blob-store-base-url.com";
+const BLOB_BASE_URL = process.env.BLOB_STORAGE_URL
 
 export async function getBlobContent(key: string): Promise<string | null> {
   try {
-    // Ensure the key has a proper URL format by combining with base URL
-    const fullUrl = new URL(key, BLOB_BASE_URL).toString();
+    // Clean up the key to avoid double slashes
+    const cleanKey = key.replace(/\/+/g, '/').replace(/^\//, '');
 
     // Get the signed URL for the blob
-    const url = await getDownloadUrl(fullUrl);
+    const url = await getDownloadUrl(cleanKey);
     if (!url) {
-      console.warn(`No URL found for blob key: ${key}`);
+      console.warn(`No URL found for blob key: ${cleanKey}`);
       return null;
     }
 
@@ -42,8 +40,11 @@ export async function storeBlobContent(
   contentType: string
 ): Promise<void> {
   try {
-    const fullUrl = new URL(key, BLOB_BASE_URL).toString();
-    await put(fullUrl, content, {
+    // Clean up the key to avoid double slashes
+    const cleanKey = key.replace(/\/+/g, '/').replace(/^\//, '');
+    console.log('Storing blob with clean key:', cleanKey);
+
+    await put(cleanKey, content, {
       access: "public",
       contentType,
       addRandomSuffix: false,
