@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { LAST_INGESTION_KEY } from "../lib/storage";
 import { put } from "@vercel/blob";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import ExcelJS from 'exceljs';
 import {
   getMonitoringLink,
   processExcelData,
@@ -17,8 +17,10 @@ export async function POST() {
       responseType: "arraybuffer",
     });
 
-    const workbook = XLSX.read(response.data, { type: "buffer" });
-    const materials = processExcelData(workbook);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(response.data);
+    
+    const materials = await processExcelData(workbook);
 
     // Save materials to both KV and Blob storage
     await saveMaterialsToDB(materials);

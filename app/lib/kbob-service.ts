@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as XLSX from "xlsx";
+import ExcelJS from 'exceljs';
 import { kv } from "@vercel/kv";
 import { put } from "@vercel/blob";
 import {
@@ -119,7 +119,7 @@ export async function getRawMaterials(): Promise<Record<string, any>[]> {
 interface KBOBMaterial {
   id: string;
   uuid: string;
-  group?: string; // {{ edit_1 }} Made group optional
+  group?: string; // Made group optional
   nameDE: string;
   nameFR: string;
   density: string | null;
@@ -151,30 +151,24 @@ interface KBOBMaterial {
   primaryEnergyNonRenewableDisposal: number | null;
 }
 
-export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
-  const sheetName = workbook.SheetNames.find(
-    (name) =>
-      name.toLowerCase().includes("baumaterialien") ||
-      name.toLowerCase().includes("materiaux")
+export async function processExcelData(workbook: ExcelJS.Workbook): Promise<KBOBMaterial[]> {
+  // Find the correct worksheet
+  const sheet = workbook.worksheets.find(ws => 
+    ws.name.toLowerCase().includes("baumaterialien") ||
+    ws.name.toLowerCase().includes("materiaux")
   );
 
-  if (!sheetName) {
+  if (!sheet) {
     throw new Error("Baumaterialien/Matériaux sheet not found");
   }
 
-  const sheet = workbook.Sheets[sheetName];
-  const rawData = XLSX.utils.sheet_to_json<string[]>(sheet, {
-    header: 1,
-    raw: false,
-    blankrows: false,
+  // Find header row
+  let headerRowIndex = -1;
+  sheet.eachRow((row, rowNumber) => {
+    if (row.getCell(1).toString().toLowerCase().includes("id-nummer")) {
+      headerRowIndex = rowNumber;
+    }
   });
-
-  // Log raw data for debugging
-  console.log("Raw Data:", rawData);
-
-  const headerRowIndex = rawData.findIndex((row) =>
-    row[0]?.toString().toLowerCase().includes("id-nummer")
-  );
 
   if (headerRowIndex === -1) {
     throw new Error("Header row not found");
@@ -182,243 +176,137 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
 
   // Column mapping based on the complete Excel structure
   const COLUMN_MAPPING = {
-    ID: 0, // ID-Nummer
-    UUID: 1, // UUID-Nummer
-    NAME_DE: 2, // BAUMATERIALIEN
-    DISPOSAL_ID: 3, // ID-Nummer Entsorgung
-    DISPOSAL_NAME_DE: 4, // Entsorgung
-    DENSITY: 5, // Rohdichte/Flächenmasse
-    UNIT: 6, // Bezug
+    ID: 1, // ID-Nummer
+    UUID: 2, // UUID-Nummer
+    NAME_DE: 3, // BAUMATERIALIEN
+    DISPOSAL_ID: 4, // ID-Nummer Entsorgung
+    DISPOSAL_NAME_DE: 5, // Entsorgung
+    DENSITY: 6, // Rohdichte/Flächenmasse
+    UNIT: 7, // Bezug
 
     // UBP Values
-    UBP_TOTAL: 7, // UBP (Total)
-    UBP_PRODUCTION: 8, // UBP (Herstellung)
-    UBP_DISPOSAL: 9, // UBP (Entsorgung)
+    UBP_TOTAL: 8, // UBP (Total)
+    UBP_PRODUCTION: 9, // UBP (Herstellung)
+    UBP_DISPOSAL: 10, // UBP (Entsorgung)
 
     // Primary Energy Total
-    PRIMARY_ENERGY_TOTAL: 10, // Primärenergie gesamt, Total
-    PRIMARY_ENERGY_PRODUCTION_TOTAL: 11, // Primärenergie gesamt, Herstellung total
-    PRIMARY_ENERGY_PRODUCTION_ENERGETIC: 12, // Primärenergie gesamt, Herstellung energetisch genutzt
-    PRIMARY_ENERGY_PRODUCTION_MATERIAL: 13, // Primärenergie gesamt, Herstellung stofflich genutzt
-    PRIMARY_ENERGY_DISPOSAL: 14, // Primärenergie gesamt, Entsorgung
+    PRIMARY_ENERGY_TOTAL: 11, // Primärenergie gesamt, Total
+    PRIMARY_ENERGY_PRODUCTION_TOTAL: 12, // Primärenergie gesamt, Herstellung total
+    PRIMARY_ENERGY_PRODUCTION_ENERGETIC: 13, // Primärenergie gesamt, Herstellung energetisch genutzt
+    PRIMARY_ENERGY_PRODUCTION_MATERIAL: 14, // Primärenergie gesamt, Herstellung stofflich genutzt
+    PRIMARY_ENERGY_DISPOSAL: 15, // Primärenergie gesamt, Entsorgung
 
     // Primary Energy Renewable
-    PRIMARY_ENERGY_RENEWABLE_TOTAL: 15, // Primärenergie erneuerbar, Total
-    PRIMARY_ENERGY_RENEWABLE_PRODUCTION_TOTAL: 16, // Primärenergie erneuerbar, Herstellung total
-    PRIMARY_ENERGY_RENEWABLE_PRODUCTION_ENERGETIC: 17, // Primärenergie erneuerbar, Herstellung energetisch genutzt
-    PRIMARY_ENERGY_RENEWABLE_PRODUCTION_MATERIAL: 18, // Primärenergie erneuerbar, Herstellung stofflich genutzt
-    PRIMARY_ENERGY_RENEWABLE_DISPOSAL: 19, // Primärenergie erneuerbar, Entsorgung
+    PRIMARY_ENERGY_RENEWABLE_TOTAL: 16, // Primärenergie erneuerbar, Total
+    PRIMARY_ENERGY_RENEWABLE_PRODUCTION_TOTAL: 17, // Primärenergie erneuerbar, Herstellung total
+    PRIMARY_ENERGY_RENEWABLE_PRODUCTION_ENERGETIC: 18, // Primärenergie erneuerbar, Herstellung energetisch genutzt
+    PRIMARY_ENERGY_RENEWABLE_PRODUCTION_MATERIAL: 19, // Primärenergie erneuerbar, Herstellung stofflich genutzt
+    PRIMARY_ENERGY_RENEWABLE_DISPOSAL: 20, // Primärenergie erneuerbar, Entsorgung
 
     // Primary Energy Non-Renewable
-    PRIMARY_ENERGY_NON_RENEWABLE_TOTAL: 20, // Primärenergie nicht erneuerbar, Total
-    PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_TOTAL: 21, // Primärenergie nicht erneuerbar, Herstellung total
-    PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_ENERGETIC: 22, // Primärenergie nicht erneuerbar, Herstellung energetisch genutzt
-    PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_MATERIAL: 23, // Primärenergie nicht erneuerbar, Herstellung stofflich genutzt
-    PRIMARY_ENERGY_NON_RENEWABLE_DISPOSAL: 24, // Primärenergie nicht erneuerbar, Entsorgung
+    PRIMARY_ENERGY_NON_RENEWABLE_TOTAL: 21, // Primärenergie nicht erneuerbar, Total
+    PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_TOTAL: 22, // Primärenergie nicht erneuerbar, Herstellung total
+    PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_ENERGETIC: 23, // Primärenergie nicht erneuerbar, Herstellung energetisch genutzt
+    PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_MATERIAL: 24, // Primärenergie nicht erneuerbar, Herstellung stofflich genutzt
+    PRIMARY_ENERGY_NON_RENEWABLE_DISPOSAL: 25, // Primärenergie nicht erneuerbar, Entsorgung
 
     // GWP Values
-    GWP_TOTAL: 25, // Treibhausgasemissionen, Total
-    GWP_PRODUCTION: 26, // Treibhausgasemissionen, Herstellung
-    GWP_DISPOSAL: 27, // Treibhausgasemissionen, Entsorgung
+    GWP_TOTAL: 26, // Treibhausgasemissionen, Total
+    GWP_PRODUCTION: 27, // Treibhausgasemissionen, Herstellung
+    GWP_DISPOSAL: 28, // Treibhausgasemissionen, Entsorgung
 
-    BIOGENIC_CARBON: 28, // Biogener Kohlenstoff, im Produkt enthalten
+    BIOGENIC_CARBON: 29, // Biogener Kohlenstoff, im Produkt enthalten
 
-    NAME_FR: 29, // MATÉRIAUX DE CONSTRUCTON
-    DISPOSAL_NAME_FR: 30, // Élimination
+    NAME_FR: 30, // MATÉRIAUX DE CONSTRUCTON
+    DISPOSAL_NAME_FR: 31, // Élimination
   } as const;
 
   const materials: KBOBMaterial[] = [];
-  const dataStartIndex = headerRowIndex + 1;
 
-  for (let i = dataStartIndex; i < rawData.length; i++) {
-    const row = rawData[i] as string[];
-    const id = row[COLUMN_MAPPING.ID]?.toString().trim();
-    const uuid = row[COLUMN_MAPPING.UUID]?.toString().trim();
+  // Process each row after the header
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber <= headerRowIndex) return;
 
-    // Only validate UUID format
+    const id = row.getCell(COLUMN_MAPPING.ID).toString().trim();
+    const uuid = row.getCell(COLUMN_MAPPING.UUID).toString().trim();
+
     if (!isUUID(uuid)) {
-      console.log(`Skipping row ${i + 1} - Invalid UUID format:`, {
+      console.log(`Skipping row ${rowNumber} - Invalid UUID format:`, {
         id,
         uuid,
-        row: i + 1,
+        row: rowNumber,
       });
-      continue;
+      return;
     }
 
     try {
       const material: KBOBMaterial = {
         id,
         uuid,
-        nameDE: String(row[COLUMN_MAPPING.NAME_DE] || ""),
-        nameFR: String(row[COLUMN_MAPPING.NAME_FR] || ""),
-        disposalId: String(row[COLUMN_MAPPING.DISPOSAL_ID] || ""),
-        disposalNameDE: String(row[COLUMN_MAPPING.DISPOSAL_NAME_DE] || ""),
-        disposalNameFR: String(row[COLUMN_MAPPING.DISPOSAL_NAME_FR] || ""),
-        density: String(row[COLUMN_MAPPING.DENSITY] || null),
-        unit: String(row[COLUMN_MAPPING.UNIT] || ""),
-        ubp21Total: parseNumber(row[COLUMN_MAPPING.UBP_TOTAL]),
-        ubp21Production: parseNumber(row[COLUMN_MAPPING.UBP_PRODUCTION]),
-        ubp21Disposal: parseNumber(row[COLUMN_MAPPING.UBP_DISPOSAL]),
-        gwpTotal: parseNumber(row[COLUMN_MAPPING.GWP_TOTAL]),
-        gwpProduction: parseNumber(row[COLUMN_MAPPING.GWP_PRODUCTION]),
-        gwpDisposal: parseNumber(row[COLUMN_MAPPING.GWP_DISPOSAL]),
-        biogenicCarbon: parseNumber(row[COLUMN_MAPPING.BIOGENIC_CARBON]),
-        primaryEnergyTotal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_TOTAL]
-        ),
-        primaryEnergyProductionTotal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_PRODUCTION_TOTAL]
-        ),
-        primaryEnergyProductionEnergetic: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_PRODUCTION_ENERGETIC]
-        ),
-        primaryEnergyProductionMaterial: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_PRODUCTION_MATERIAL]
-        ),
-        primaryEnergyDisposal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_DISPOSAL]
-        ),
-        primaryEnergyRenewableTotal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_TOTAL]
-        ),
-        primaryEnergyRenewableProductionTotal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_PRODUCTION_TOTAL]
-        ),
-        primaryEnergyRenewableProductionEnergetic: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_PRODUCTION_ENERGETIC]
-        ),
-        primaryEnergyRenewableProductionMaterial: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_PRODUCTION_MATERIAL]
-        ),
-        primaryEnergyRenewableDisposal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_DISPOSAL]
-        ),
-        primaryEnergyNonRenewableTotal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_TOTAL]
-        ),
-        primaryEnergyNonRenewableProductionTotal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_TOTAL]
-        ),
-        primaryEnergyNonRenewableProductionEnergetic: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_ENERGETIC]
-        ),
-        primaryEnergyNonRenewableProductionMaterial: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_MATERIAL]
-        ),
-        primaryEnergyNonRenewableDisposal: parseNumber(
-          row[COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_DISPOSAL]
-        ),
+        nameDE: row.getCell(COLUMN_MAPPING.NAME_DE).toString() || "",
+        nameFR: row.getCell(COLUMN_MAPPING.NAME_FR).toString() || "",
+        disposalId: row.getCell(COLUMN_MAPPING.DISPOSAL_ID).toString() || "",
+        disposalNameDE: row.getCell(COLUMN_MAPPING.DISPOSAL_NAME_DE).toString() || "",
+        disposalNameFR: row.getCell(COLUMN_MAPPING.DISPOSAL_NAME_FR).toString() || "",
+        density: row.getCell(COLUMN_MAPPING.DENSITY).toString() || null,
+        unit: row.getCell(COLUMN_MAPPING.UNIT).toString() || "",
+        ubp21Total: parseNumber(row.getCell(COLUMN_MAPPING.UBP_TOTAL).value),
+        ubp21Production: parseNumber(row.getCell(COLUMN_MAPPING.UBP_PRODUCTION).value),
+        ubp21Disposal: parseNumber(row.getCell(COLUMN_MAPPING.UBP_DISPOSAL).value),
+        gwpTotal: parseNumber(row.getCell(COLUMN_MAPPING.GWP_TOTAL).value),
+        gwpProduction: parseNumber(row.getCell(COLUMN_MAPPING.GWP_PRODUCTION).value),
+        gwpDisposal: parseNumber(row.getCell(COLUMN_MAPPING.GWP_DISPOSAL).value),
+        biogenicCarbon: parseNumber(row.getCell(COLUMN_MAPPING.BIOGENIC_CARBON).value),
+        primaryEnergyTotal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_TOTAL).value),
+        primaryEnergyProductionTotal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_PRODUCTION_TOTAL).value),
+        primaryEnergyProductionEnergetic: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_PRODUCTION_ENERGETIC).value),
+        primaryEnergyProductionMaterial: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_PRODUCTION_MATERIAL).value),
+        primaryEnergyDisposal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_DISPOSAL).value),
+        primaryEnergyRenewableTotal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_TOTAL).value),
+        primaryEnergyRenewableProductionTotal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_PRODUCTION_TOTAL).value),
+        primaryEnergyRenewableProductionEnergetic: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_PRODUCTION_ENERGETIC).value),
+        primaryEnergyRenewableProductionMaterial: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_PRODUCTION_MATERIAL).value),
+        primaryEnergyRenewableDisposal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_RENEWABLE_DISPOSAL).value),
+        primaryEnergyNonRenewableTotal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_TOTAL).value),
+        primaryEnergyNonRenewableProductionTotal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_TOTAL).value),
+        primaryEnergyNonRenewableProductionEnergetic: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_ENERGETIC).value),
+        primaryEnergyNonRenewableProductionMaterial: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_PRODUCTION_MATERIAL).value),
+        primaryEnergyNonRenewableDisposal: parseNumber(row.getCell(COLUMN_MAPPING.PRIMARY_ENERGY_NON_RENEWABLE_DISPOSAL).value),
       };
 
-      // Only validate German name exists and is not too short
-      if (material.nameDE && material.nameDE.length > 2) {
-        materials.push(material);
-      } else {
-        console.log(`Skipping material ${id} - Invalid German name:`, {
-          nameDE: material.nameDE,
-          nameFR: material.nameFR,
-          row: i + 1,
-          allData: material,
-        });
-      }
+      materials.push(material);
     } catch (error) {
-      console.warn(`Error processing row ${i}:`, error);
-      continue;
+      console.error(`Error processing row ${rowNumber}:`, error);
     }
-  }
+  });
 
-  console.log(`Successfully processed ${materials.length} materials`);
   return materials;
 }
 
 function parseNumber(value: any): number | null {
-  if (value === undefined || value === null || value === "") return null;
-
-  // Convert to string and clean up the value
-  const cleanValue = value
-    .toString()
-    .replace(/'/g, "") // Remove thousand separators
-    .replace(/,/g, ".") // Replace comma with decimal point
-    .replace(/\s+/g, "") // Remove whitespace
-    .replace(/[^\d.-]/g, "") // Remove any non-numeric characters except decimal and minus
-    .trim();
-
-  if (cleanValue === "") return null;
-
-  const num = Number(cleanValue);
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
   return isNaN(num) ? null : num;
 }
 
 function isUUID(str: string): boolean {
-  if (!str) return false;
   const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str.trim());
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
 }
 
-// Add these new functions
-export async function saveMaterialsToDB(
-  materials: KBOBMaterial[]
-): Promise<void> {
+export async function saveMaterialsToDB(materials: KBOBMaterial[]) {
   try {
-    console.log(
-      `Starting to save ${materials.length} materials to database...`
-    );
-
-    // Create a pipeline for batch operations
-    const pipeline = kv.pipeline();
-
-    // Store materials by ID
-    materials.forEach((material) => {
-      pipeline.set(`material:${material.id}`, material);
-    });
-
-    // Group materials by their group
-    const groupMap: Record<string, string[]> = {};
-    materials.forEach((material) => {
-      if (!material.group) return;
-      if (!groupMap[material.group]) {
-        groupMap[material.group] = [];
-      }
-      groupMap[material.group].push(material.id);
-    });
-
-    // Store group mappings
-    Object.entries(groupMap).forEach(([group, ids]) => {
-      pipeline.set(`group:${group}`, ids);
-    });
-
-    // Store the list of all groups
-    pipeline.set("groups", Object.keys(groupMap));
-
-    // Store total count
-    pipeline.set("materials:count", materials.length);
-
-    // Execute all operations
-    await pipeline.exec();
-    console.log("Successfully saved materials to KV database");
-
-    // Optionally store in blob storage as backup
-    try {
-      await storeBlobContent(
-        MATERIALS_KEY,
-        JSON.stringify(materials),
-        "application/json"
-      );
-      console.log("Successfully saved materials to blob storage");
-    } catch (blobError) {
-      console.warn(
-        "Failed to save to blob storage, but KV storage succeeded:",
-        blobError
-      );
-    }
+    const jsonContent = JSON.stringify(materials);
+    await storeBlobContent(MATERIALS_KEY, jsonContent);
+    await kv.set(MATERIALS_KEY, materials);
+    await kv.set(LAST_INGESTION_KEY, new Date().toISOString());
   } catch (error) {
-    console.error("Failed to save materials to database:", error);
-    throw new Error("Failed to save materials to database");
+    console.error("Error saving materials to DB:", error);
+    throw error;
   }
 }
 
-// Add helper function to get materials by group
 export async function getMaterialsByGroup(
   group: string
 ): Promise<KBOBMaterial[]> {
@@ -439,7 +327,6 @@ export async function getMaterialsByGroup(
   }
 }
 
-// Add helper function to get material by ID
 export async function getMaterialById(
   id: string
 ): Promise<KBOBMaterial | null> {

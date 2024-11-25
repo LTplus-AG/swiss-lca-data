@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from 'exceljs';
 import { processExcelData, saveMaterialsToDB } from "@/lib/kbob-service";
 
 export async function POST(request: Request) {
@@ -14,11 +14,12 @@ export async function POST(request: Request) {
 
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-    const materials = processExcelData(workbook);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
+    const materials = await processExcelData(workbook);
 
     // Save materials to your database or KV store
-    await saveMaterialsToDB(materials); // Ensure this function is defined
+    await saveMaterialsToDB(materials);
 
     // Optionally, you can log or store the version and datePublished as needed
     console.log(`Version: ${version}, Date Published: ${datePublished}`);

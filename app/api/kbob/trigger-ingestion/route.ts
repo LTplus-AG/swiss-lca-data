@@ -3,7 +3,7 @@ import { processExcelData } from "@/lib/kbob-service";
 import { put } from "@vercel/blob";
 import { kv } from "@vercel/kv";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import ExcelJS from 'exceljs';
 
 const MATERIALS_KEY = "kbob/materials.json";
 const LAST_INGESTION_KEY = "kbob/last_ingestion.txt";
@@ -32,8 +32,9 @@ export async function POST() {
     console.log("Excel file fetched, processing...");
 
     // Process the Excel data
-    const workbook = XLSX.read(response.data, { type: "buffer" });
-    const materials = processExcelData(workbook);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(response.data);
+    const materials = await processExcelData(workbook);
 
     console.log(`Processed ${materials.length} materials`);
 
