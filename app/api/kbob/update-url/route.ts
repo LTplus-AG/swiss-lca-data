@@ -1,18 +1,13 @@
+// app/api/kbob/route.ts
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { validateApiKey } from '@/api/lib/auth';
 
 const KBOB_URL_KEY = 'kbob/excel_url';
 
 export async function PUT(request: Request) {
-  // Validate API key
-  const apiKeyValid = await validateApiKey(request);
-  if (!apiKeyValid) {
-    return NextResponse.json({ success: false, message: 'Invalid API key' }, { status: 401 });
-  }
-
   try {
     const { url } = await request.json();
+
     if (!url) {
       return NextResponse.json(
         { success: false, message: 'URL is required' },
@@ -37,13 +32,7 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
-  // Validate API key
-  const apiKeyValid = await validateApiKey(request);
-  if (!apiKeyValid) {
-    return NextResponse.json({ success: false, message: 'Invalid API key' }, { status: 401 });
-  }
-
+export async function GET() {
   try {
     const url = await kv.get<string>(KBOB_URL_KEY);
     return NextResponse.json({
