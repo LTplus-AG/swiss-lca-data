@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   serverExternalPackages: ["@clerk/backend"],
+  env: {
+    API_KEYS: process.env.API_KEYS,
+  },
 };
 
 export default nextConfig;

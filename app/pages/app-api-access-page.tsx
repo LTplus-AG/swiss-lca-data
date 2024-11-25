@@ -884,10 +884,15 @@ fetch('${fullUrl}', {
         queryParams ? `?${queryParams}` : ""
       }`;
 
+      // Get the first API key from Next.js env config
+      const apiKey = process.env.API_KEYS?.split(",")[0];
+      console.log("Using API key:", apiKey ? "Found" : "Not found"); // Debug log
+
       const response = await fetch(fullUrl, {
         method: selectedEndpoint.method,
         headers: {
           "Content-Type": "application/json",
+          ...(apiKey && { "Authorization": `Bearer ${apiKey}` })
         },
       });
 
