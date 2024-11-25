@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
 import { checkForNewVersion, downloadAndProcessNewVersion } from '@/lib/kbob-version-checker';
+import { clientConfig } from '@/lib/client-config';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { hasNewVersion, versionInfo } = await checkForNewVersion();
+    // Check for API key in Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== clientConfig.API_KEY) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check for test mode
+    const url = new URL(request.url);
+    const isTest = url.searchParams.get('test') === 'true';
+
+    const { hasNewVersion, versionInfo } = await checkForNewVersion(isTest);
 
     if (!hasNewVersion) {
       return NextResponse.json({
