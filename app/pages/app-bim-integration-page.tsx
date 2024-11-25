@@ -42,6 +42,8 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
+import { clientConfig } from "@/lib/client-config";
+
 interface Material {
   id: string;
   nameDE: string;
@@ -104,7 +106,11 @@ export function Page() {
     const fetchMaterials = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/kbob/materials");
+        const response = await fetch("/api/kbob/materials", {
+          headers: {
+            'Authorization': `Bearer ${clientConfig.API_KEY}`
+          }
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch materials");
         }
@@ -132,7 +138,11 @@ export function Page() {
   useEffect(() => {
     const fetchFields = async () => {
       try {
-        const response = await fetch("/api/kbob/materials/fields");
+        const response = await fetch("/api/kbob/materials/fields", {
+          headers: {
+            'Authorization': `Bearer ${clientConfig.API_KEY}`
+          }
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch fields");
         }
@@ -330,6 +340,7 @@ export function Page() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              'Authorization': `Bearer ${clientConfig.API_KEY}`
             },
             body: JSON.stringify({
               materials: selectedMaterialsData,

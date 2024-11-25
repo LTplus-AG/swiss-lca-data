@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImpactChart } from "@/components/impact-chart";
 import { Search } from "lucide-react";
+import { clientConfig } from "@/lib/client-config";
 
 interface KBOBMaterial {
   id: string;
@@ -85,7 +86,11 @@ export default function DataExplorerPage() {
   useEffect(() => {
     const fetchIndicators = async () => {
       try {
-        const response = await fetch("/api/kbob/indicators");
+        const response = await fetch("/api/kbob/indicators", {
+          headers: {
+            'Authorization': `Bearer ${clientConfig.API_KEY}`
+          }
+        });
         const data = await response.json();
         if (data.success && Array.isArray(data.indicators)) {
           setIndicators(data.indicators);
@@ -105,7 +110,11 @@ export default function DataExplorerPage() {
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/kbob/materials/all"); // Use the /all endpoint for complete dataset
+      const response = await fetch("/api/kbob/materials/all", {
+        headers: {
+          'Authorization': `Bearer ${clientConfig.API_KEY}`
+        }
+      }); // Use the /all endpoint for complete dataset
       const data = await response.json();
 
       if (data.success && Array.isArray(data.materials)) {
