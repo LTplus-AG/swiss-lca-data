@@ -2,9 +2,12 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { processExcelData, saveMaterialsToDB } from './kbob-service';
 import { kv } from '@vercel/kv';
+import { sendSlackNotification, formatKBOBUpdateMessage } from './slack-notifier';
+import puppeteer from 'puppeteer';
 
 const KBOB_VERSION_KEY = 'kbob/latest_version';
-const KBOB_EXCEL_URL = 'https://backend.kbob.admin.ch/fileservice/sdweb-docs-prod-kbobadminch-files/files/2024/10/17/66909581-b59b-495b-8f2e-41f0625fe5e6.xlsx';
+const KBOB_BASE_URL = 'https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich';
+const BACKEND_URL_PATTERN = 'backend.kbob.admin.ch/fileservice/sdweb-docs-prod-kbobadminch-files/files';
 
 interface KBOBVersionInfo {
   version: string;
@@ -12,39 +15,98 @@ interface KBOBVersionInfo {
   downloadUrl: string;
 }
 
-function extractVersionFromUrl(url: string): { year: string; month: string; day: string } {
-  // Extract date components from URL path
-  const matches = url.match(/\/files\/(\d{4})\/(\d{2})\/(\d{2})/);
-  if (!matches) {
-    throw new Error('Could not extract date from URL');
+async function extractVersionFromPage(): Promise<{ version: string; excelUrl: string | null }> {
+  let browser;
+  try {
+    // Launch browser
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox']
+    });
+
+    // Create a new page
+    const page = await browser.newPage();
+
+    // Navigate to the page and wait for content to load
+    await page.goto(KBOB_BASE_URL, { waitUntil: 'networkidle0' });
+
+    // Accept cookies if the dialog is present
+    try {
+      const acceptButton = await page.$('button:has-text("Akzeptieren")');
+      if (acceptButton) {
+        await acceptButton.click();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (e) {
+      console.log('No cookie consent dialog found or error clicking it:', e);
+    }
+
+    // Find Excel download link and version from the backend URL
+    const { excelUrl, version } = await page.evaluate((backendPattern) => {
+      const links = Array.from(document.querySelectorAll('a'));
+      for (const link of links) {
+        const href = link.href || '';
+        if (href.includes(backendPattern) && href.toLowerCase().includes('.xlsx')) {
+          console.log('Found backend link:', href);
+          
+          // Extract version from URL
+          const urlParts = href.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          console.log('Filename:', filename);
+          
+          // Look for version in parent element text
+          const parentText = link.parentElement?.textContent || '';
+          console.log('Parent text:', parentText);
+          
+          const versionMatch = parentText.match(/\((\d{4}\/\d+:\d{4}),\s*Version\s*(\d+)\)/);
+          if (versionMatch) {
+            return {
+              excelUrl: href,
+              version: `${versionMatch[1]}, Version ${versionMatch[2]}`
+            };
+          }
+        }
+      }
+      return { excelUrl: null, version: null };
+    }, BACKEND_URL_PATTERN);
+
+    console.log('Found Excel URL:', excelUrl);
+    console.log('Found version:', version);
+
+    if (!excelUrl || !version) {
+      throw new Error('Could not find Excel file URL or version information');
+    }
+
+    return { version, excelUrl };
+  } catch (error) {
+    console.error('Error extracting version from page:', error);
+    throw error;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
-  return {
-    year: matches[1],
-    month: matches[2],
-    day: matches[3]
-  };
 }
 
 export async function checkForNewVersion(isTest: boolean = false): Promise<{ hasNewVersion: boolean; versionInfo?: KBOBVersionInfo }> {
   try {
-    // Extract version information from the URL
-    const { year, month, day } = extractVersionFromUrl(KBOB_EXCEL_URL);
-    
-    // Format version string: [year]/1:[year]
-    const versionText = `${year}/1:${year}`;
-    console.log('Base version:', versionText);
+    // Extract version info from the main page
+    const { version: pageVersion, excelUrl } = await extractVersionFromPage();
 
-    // In test mode, append a higher version number
-    let finalVersionText = versionText;
+    // In test mode, increment the version number
+    let finalVersion = pageVersion;
     if (isTest) {
-      finalVersionText = `${versionText}, Version 2`;
-      console.log('Test mode - modified version:', finalVersionText);
+      const versionMatch = pageVersion.match(/Version (\d+)$/);
+      if (versionMatch) {
+        const currentVersion = parseInt(versionMatch[1]);
+        finalVersion = pageVersion.replace(/Version \d+$/, `Version ${currentVersion + 1}`);
+      }
     }
 
     const versionInfo: KBOBVersionInfo = {
-      version: finalVersionText,
-      date: `${year}-${month}-${day}`,
-      downloadUrl: KBOB_EXCEL_URL
+      version: finalVersion,
+      date: new Date().toISOString().split('T')[0],
+      downloadUrl: excelUrl || ''
     };
 
     console.log('Version info:', versionInfo);
@@ -70,8 +132,12 @@ export async function checkForNewVersion(isTest: boolean = false): Promise<{ has
 
 export async function downloadAndProcessNewVersion(versionInfo: KBOBVersionInfo): Promise<boolean> {
   try {
+    if (!versionInfo.downloadUrl) {
+      throw new Error('No download URL available');
+    }
+
     console.log('Downloading from URL:', versionInfo.downloadUrl);
-    
+
     // Download the Excel file
     const response = await axios.get(versionInfo.downloadUrl, {
       responseType: 'arraybuffer',
@@ -97,6 +163,14 @@ export async function downloadAndProcessNewVersion(versionInfo: KBOBVersionInfo)
     // Store the new version info
     await kv.set(KBOB_VERSION_KEY, versionInfo);
 
+    // Send Slack notification
+    const message = formatKBOBUpdateMessage(
+      versionInfo.version,
+      versionInfo.date,
+      materials.length
+    );
+    await sendSlackNotification(message);
+
     return true;
   } catch (error) {
     console.error('Error processing new KBOB version:', error);
@@ -104,6 +178,14 @@ export async function downloadAndProcessNewVersion(versionInfo: KBOBVersionInfo)
       console.error('Error details:', error.message);
       console.error('Stack trace:', error.stack);
     }
+
+    // Send error notification to Slack
+    if (error instanceof Error) {
+      await sendSlackNotification({
+        text: `❌ Error processing KBOB update: ${error.message}`
+      });
+    }
+
     return false;
   }
 }
