@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { MaterialsFiltersOptions } from "./materials-filters-options";
+import { clientConfig } from "@/lib/client-config";
 
 interface Option {
   label: string;
@@ -174,9 +175,9 @@ export function MaterialsTableComponent() {
   ]);
   const [loading, setLoading] = useState(true);
   const [allMaterials, setAllMaterials] = useState<KBOBMaterial[]>([]); // Store all materials
-  const [displayedMaterials, setDisplayedMaterials] = useState<KBOBMaterial[]>(
+  const [displayedMaterials, setDisplayedMaterials] = useState<KBOBMaterial[]>( // Filtered/grouped materials
     []
-  ); // Filtered/grouped materials
+  );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -188,7 +189,11 @@ export function MaterialsTableComponent() {
   useEffect(() => {
     const fetchIndicators = async () => {
       try {
-        const response = await fetch("/api/kbob/indicators");
+        const response = await fetch("/api/kbob/indicators", {
+          headers: {
+            'Authorization': `Bearer ${clientConfig.API_KEY}`
+          }
+        });
         const data = await response.json();
         if (data.success && Array.isArray(data.indicators)) {
           setIndicators(data.indicators);
@@ -264,7 +269,11 @@ export function MaterialsTableComponent() {
   const fetchAllMaterials = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/kbob/materials/all"); // New endpoint for all materials
+      const response = await fetch("/api/kbob/materials", {
+        headers: {
+          'Authorization': `Bearer ${clientConfig.API_KEY}`
+        }
+      });
       const data = await response.json();
 
       if (data.success && Array.isArray(data.materials)) {

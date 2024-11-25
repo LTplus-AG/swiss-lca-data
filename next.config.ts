@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@clerk/backend"],
   env: {
     API_KEYS: process.env.API_KEYS,
+    // Expose first API key for client-side read operations
+    NEXT_PUBLIC_API_KEY: process.env.API_KEYS?.split(',')[0] || '',
   },
 };
 
