@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/kbob/check-version",
+      "path": "/api/cron",
       "schedule": "0 0 * * *"
     }
   ]

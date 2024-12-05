@@ -75,44 +75,44 @@ export function MaterialsFiltersOptions({
     { id: "Entsorgung", label: "Entsorgung" },
     { id: "Rohdichte/ Flächenmasse", label: "Rohdichte/Flächenmasse" },
     { id: "Bezug", label: "Bezug" },
-    { id: "UBP (Total)", label: "UBP (Total)" },
-    { id: "UBP (Herstellung)", label: "UBP (Herstellung)" },
-    { id: "UBP (Entsorgung)", label: "UBP (Entsorgung)" },
+    { id: "UBP (Total)", label: "UBP Total [UBP'21]" },
+    { id: "UBP (Herstellung)", label: "UBP Herstellung [UBP'21]" },
+    { id: "UBP (Entsorgung)", label: "UBP Entsorgung [UBP'21]" },
     {
       id: "Primärenergie gesamt, Total [kWh oil-eq]",
-      label: "Primärenergie gesamt, Total",
+      label: "Primärenergie gesamt, Total [kWh oil-eq]",
     },
     {
       id: "Primärenergie gesamt, Herstellung total [kWh oil-eq]",
-      label: "Primärenergie gesamt, Herstellung total",
+      label: "Primärenergie gesamt, Herstellung total [kWh oil-eq]",
     },
     {
       id: "Primärenergie gesamt, Entsorgung [kWh oil-eq]",
-      label: "Primärenergie gesamt, Entsorgung",
+      label: "Primärenergie gesamt, Entsorgung [kWh oil-eq]",
     },
     {
       id: "Primärenergie erneuerbar, Total [kWh oil-eq]",
-      label: "Primärenergie erneuerbar, Total",
+      label: "Primärenergie erneuerbar, Total [kWh oil-eq]",
     },
     {
       id: "Primärenergie nicht erneuerbar, Total [kWh oil-eq]",
-      label: "Primärenergie nicht erneuerbar, Total",
+      label: "Primärenergie nicht erneuerbar, Total [kWh oil-eq]",
     },
     {
       id: "Treibhausgasemissionen, Total [kg CO2-eq]",
-      label: "Treibhausgasemissionen, Total",
+      label: "Treibhausgasemissionen, Total [kg CO₂ eq]",
     },
     {
       id: "Treibhausgasemissionen, Herstellung [kg CO2-eq]",
-      label: "Treibhausgasemissionen, Herstellung",
+      label: "Treibhausgasemissionen, Herstellung [kg CO₂ eq]",
     },
     {
       id: "Treibhausgasemissionen, Entsorgung [kg CO2-eq]",
-      label: "Treibhausgasemissionen, Entsorgung",
+      label: "Treibhausgasemissionen, Entsorgung [kg CO₂ eq]",
     },
     {
       id: "Biogener Kohlenstoff, im Produkt enthalten [kg C]",
-      label: "Biogener Kohlenstoff, im Produkt enthalten",
+      label: "Biogener Kohlenstoff, im Produkt enthalten [kg C]",
     },
   ];
 

@@ -3,6 +3,28 @@ import * as XLSX from "xlsx";
 import { processExcelData, saveMaterialsToDB } from "@/lib/kbob-service";
 
 export async function POST(request: Request) {
+  // Verify environment variables first
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    return NextResponse.json(
+      {
+        error: "Missing required environment variables. Please check your configuration.",
+      },
+      { status: 500 }
+    );
+  }
+
+  // Get authorization header
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Missing or invalid authorization header' }, { status: 401 });
+  }
+
+  // Verify the token (you should replace this with your actual token verification)
+  const token = authHeader.split(' ')[1];
+  if (token !== process.env.API_SECRET_KEY) {
+    return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const file = formData.get("file") as File;
   const version = formData.get("version") as string;
@@ -18,7 +40,7 @@ export async function POST(request: Request) {
     const materials = processExcelData(workbook);
 
     // Save materials to your database or KV store
-    await saveMaterialsToDB(materials); // Ensure this function is defined
+    await saveMaterialsToDB(materials);
 
     // Optionally, you can log or store the version and datePublished as needed
     console.log(`Version: ${version}, Date Published: ${datePublished}`);

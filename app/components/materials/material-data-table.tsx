@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search } from "lucide-react";
-import { SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -154,6 +153,21 @@ interface KBOBMaterial {
   gwpProduction: number | null;
   gwpDisposal: number | null;
   biogenicCarbon: number | null;
+  primaryEnergyTotal: number | null;
+  primaryEnergyProductionTotal: number | null;
+  primaryEnergyProductionEnergetic: number | null;
+  primaryEnergyProductionMaterial: number | null;
+  primaryEnergyDisposal: number | null;
+  primaryEnergyRenewableTotal: number | null;
+  primaryEnergyRenewableProductionTotal: number | null;
+  primaryEnergyRenewableProductionEnergetic: number | null;
+  primaryEnergyRenewableProductionMaterial: number | null;
+  primaryEnergyRenewableDisposal: number | null;
+  primaryEnergyNonRenewableTotal: number | null;
+  primaryEnergyNonRenewableProductionTotal: number | null;
+  primaryEnergyNonRenewableProductionEnergetic: number | null;
+  primaryEnergyNonRenewableProductionMaterial: number | null;
+  primaryEnergyNonRenewableDisposal: number | null;
 }
 
 // Add new interface for indicators
@@ -167,11 +181,12 @@ interface Indicator {
 // Add the MaterialsTableComponent
 export function MaterialsTableComponent() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+  const [visibleColumns, setVisibleColumns] = useState([
     "id",
     "nameDE",
     "ubp21Total",
     "gwpTotal",
+    "primaryEnergyNonRenewableTotal"
   ]);
   const [loading, setLoading] = useState(true);
   const [allMaterials, setAllMaterials] = useState<KBOBMaterial[]>([]); // Store all materials
@@ -180,7 +195,10 @@ export function MaterialsTableComponent() {
   );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [pageSize, setPageSize] = useState(10);
+  const pageSizeOptions = [10, 20, 50, 100, 'All'] as const;
+  type PageSizeOption = (typeof pageSizeOptions)[number];
+  const ITEMS_PER_PAGE = pageSize;
 
   // Add state for indicators
   const [indicators, setIndicators] = useState<Indicator[]>([]);
@@ -206,7 +224,7 @@ export function MaterialsTableComponent() {
     fetchIndicators();
   }, []);
 
-  // Update columns definition to use indicators
+  // Update columns definition to use specific labels and units
   const columns: Array<{
     key: string;
     label: string;
@@ -216,19 +234,24 @@ export function MaterialsTableComponent() {
     () => [
       { key: "id", label: "ID" },
       { key: "nameDE", label: "Name (DE)" },
-      { key: "nameFR", label: "Name (FR)" },
-      { key: "group", label: "Group" },
-      { key: "density", label: "Density" },
-      { key: "unit", label: "Unit" },
-      // Add indicator columns dynamically
-      ...indicators.map((indicator) => ({
-        key: indicator.id,
-        label: indicator.label,
-        description: indicator.description,
-        unit: indicator.unit,
-      })),
+      { key: "ubp21Total", label: "UBP Total", unit: "UBP'21" },
+      { key: "gwpTotal", label: "GWP Total", unit: "kg CO₂ eq" },
+      { 
+        key: "primaryEnergyNonRenewableTotal", 
+        label: "Primary Energy Non-Renewable Total", 
+        unit: "kWh oil-eq" 
+      },
+      // Keep other columns but they won't be visible by default
+      ...indicators
+        .filter(indicator => !visibleColumns.includes(indicator.id))
+        .map((indicator) => ({
+          key: indicator.id,
+          label: indicator.label,
+          description: indicator.description,
+          unit: indicator.unit,
+        })),
     ],
-    [indicators]
+    [indicators, visibleColumns]
   );
 
   // Add toggleColumn function
@@ -265,108 +288,157 @@ export function MaterialsTableComponent() {
     );
   }, [columns, columnSearchTerm]);
 
-  // Update fetchAllMaterials function to use the correct endpoint
-  const fetchAllMaterials = async () => {
+  // Update fetchAllMaterials function to use pagination
+  const fetchMaterials = async (currentPage: number) => {
     try {
       setLoading(true);
-      const response = await fetch("/api/kbob/materials", {
+      const pageSizeParam = pageSize === 'All' ? 'all' : pageSize;
+      const response = await fetch(`/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}&search=${searchTerm}`, {
         headers: {
           'Authorization': `Bearer ${clientConfig.API_KEY}`
         }
       });
       const data = await response.json();
 
-      if (data.success && Array.isArray(data.materials)) {
-        setAllMaterials(data.materials);
-        applyFiltersAndOptions(data.materials, filters, displayOptions);
+      if (data.success) {
+        setDisplayedMaterials(data.materials);
+        setTotalPages(data.totalPages);
+        setPage(data.currentPage);
       } else {
         console.error("Invalid data format received:", data);
-        setAllMaterials([]);
         setDisplayedMaterials([]);
       }
     } catch (error) {
       console.error("Error fetching materials:", error);
-      setAllMaterials([]);
       setDisplayedMaterials([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Update useEffect to use the new fetch function
+  useEffect(() => {
+    fetchMaterials(page);
+  }, [page, searchTerm, pageSize]);
+
+  // Add pagination range function
+  const getPaginationRange = (currentPage: number, totalPages: number) => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    range.push(1);
+
+    if (totalPages <= 1) {
+      return range;
+    }
+
+    for (let i = currentPage - delta; i <= currentPage + delta; i++) {
+      if (i < totalPages && i > 1) {
+        range.push(i);
+      }
+    }
+    range.push(totalPages);
+
+    for (let i = 0; i < range.length; i++) {
+      if (l) {
+        if (range[i] - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (range[i] - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(range[i]);
+      l = range[i];
+    }
+
+    return rangeWithDots;
+  };
+
+  // Calculate max values for indicators with 5% buffer
+  const maxIndicatorValues = useMemo(() => {
+    const maxValues: Record<string, number> = {};
+    
+    if (allMaterials.length > 0) {
+      indicators.forEach((indicator) => {
+        const max = Math.max(...allMaterials.map(material => 
+          material[indicator.id] !== null ? material[indicator.id] : 0
+        ));
+        // Add 5% buffer and round to nearest integer
+        maxValues[indicator.id] = Math.round(max * 1.05);
+      });
+    }
+    
+    return maxValues;
+  }, [allMaterials, indicators]);
+
+  // Update filterRanges state to use dynamic max values
+  const [filterRanges, setFilterRanges] = useState<Record<string, [number, number]>>({});
+
+  // Initialize filter ranges when indicators or maxValues change
+  useEffect(() => {
+    const newRanges: Record<string, [number, number]> = {};
+    
+    indicators.forEach((indicator) => {
+      const maxValue = maxIndicatorValues[indicator.id] || 0;
+      // Set initial range from 0 to max, but don't trigger filtering
+      newRanges[indicator.id] = [0, maxValue];
+    });
+
+    setFilterRanges(newRanges);
+    // Set initial displayed materials to all materials
+    setDisplayedMaterials(allMaterials);
+  }, [indicators, maxIndicatorValues]);
+
   // Function to apply filters and options to materials
   const applyFiltersAndOptions = (
     materials: KBOBMaterial[],
-    currentFilters = filters,
-    currentOptions = displayOptions,
-    search = searchTerm
+    skipFilters = false
   ) => {
-    let filtered = [...materials];
+    let filtered = materials;
 
-    // Apply text search
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter((material) =>
-        Object.entries(material).some(([key, value]) => {
-          if (value === null || key === "uuid") return false;
-          return value.toString().toLowerCase().includes(searchLower);
-        })
+    // Apply text-based filters
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (material) =>
+          material.nameDE?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          material.nameFR?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          material.id?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Apply indicator range filters
-    filtered = filtered.filter((material) => {
-      return selectedIndicatorFilters.every((indicatorId) => {
-        const value = material[indicatorId as keyof KBOBMaterial] as
-          | number
-          | null;
-        const range = indicatorRanges[indicatorId];
-
-        // Skip filtering if no range is set or value is null
-        if (!range || value === null) return true;
-
-        return value >= range[0] && value <= range[1];
+    // Only apply indicator filters if not skipping filters
+    if (!skipFilters) {
+      indicators.forEach((indicator) => {
+        if (filterRanges[indicator.id]) {
+          const [min, max] = filterRanges[indicator.id];
+          filtered = filtered.filter((material) => {
+            const value = material[indicator.id];
+            return value === null || (value >= min && value <= max);
+          });
+        }
       });
-    });
+    }
 
-    // Update displayed materials and pagination
     setDisplayedMaterials(filtered);
-    setTotalPages(Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE)));
-    setPage(1);
   };
 
   // Handle filters change
-  const handleFiltersChange = (newFilters: any) => {
-    setFilters(newFilters);
-    applyFiltersAndOptions(allMaterials, newFilters, displayOptions);
-  };
-
-  // Handle options change
-  const handleOptionsChange = (newOptions: any) => {
-    setDisplayOptions(newOptions);
-    setVisibleColumns(
-      newOptions.columns.map((col: string) =>
-        col.toLowerCase().replace(/[^a-z0-9]/g, "")
-      )
-    );
-    applyFiltersAndOptions(allMaterials, filters, newOptions);
-  };
-
-  // Fetch materials on mount
-  useEffect(() => {
-    fetchAllMaterials();
-  }, []);
-
-  // Get current page items
-  const getCurrentPageItems = () => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    return displayedMaterials.slice(start, end);
+  const handleFilterChange = (indicatorId: string, range: [number, number]) => {
+    setFilterRanges(prev => ({
+      ...prev,
+      [indicatorId]: range
+    }));
+    
+    // Apply filters with the updated ranges, don't skip filters here
+    applyFiltersAndOptions(allMaterials, false);
   };
 
   // Add state for selected indicators to filter
   const [selectedIndicatorFilters, setSelectedIndicatorFilters] = useState<
     string[]
-  >(["ubp21Total", "gwpTotal"]);
+  >(["ubp21Total", "gwpTotal", "primaryEnergyNonRenewableTotal"]);
 
   // Add state for indicator ranges at the top with other state declarations
   const [indicatorRanges, setIndicatorRanges] = useState<
@@ -383,6 +455,8 @@ export function MaterialsTableComponent() {
           initialRanges[indicator.id] = [0, 1000];
         } else if (indicator.id.includes("gwp")) {
           initialRanges[indicator.id] = [0, 500];
+        } else if (indicator.id === "primaryEnergyNonRenewableTotal") {
+          initialRanges[indicator.id] = [0, 1000];
         } else {
           initialRanges[indicator.id] = [0, 100];
         }
@@ -393,7 +467,7 @@ export function MaterialsTableComponent() {
 
   // Add effect to trigger filtering when ranges change
   useEffect(() => {
-    applyFiltersAndOptions(allMaterials, filters, displayOptions, searchTerm);
+    applyFiltersAndOptions(allMaterials, false);
   }, [
     indicatorRanges,
     selectedIndicatorFilters,
@@ -402,6 +476,69 @@ export function MaterialsTableComponent() {
     displayOptions,
     searchTerm,
   ]);
+
+  // Add state for sorting
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'asc' | 'desc' | null;
+  }>({ key: '', direction: null });
+
+  // Add sorting function
+  const onSort = (columnKey: string) => {
+    setSortConfig((currentSort) => {
+      if (currentSort.key === columnKey) {
+        // Cycle through: asc -> desc -> no sort
+        return {
+          key: columnKey,
+          direction: currentSort.direction === 'asc' ? 'desc' : 
+                    currentSort.direction === 'desc' ? null : 'asc'
+        };
+      }
+      // First click on a column sets ascending sort
+      return { key: columnKey, direction: 'asc' };
+    });
+  };
+
+  // Update material sorting
+  const sortedMaterials = useMemo(() => {
+    if (!sortConfig.direction || !sortConfig.key) {
+      return displayedMaterials;
+    }
+
+    return [...displayedMaterials].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      // Handle null values
+      if (aValue === null && bValue === null) return 0;
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+
+      // Handle numeric values
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // Handle string values
+      const aString = String(aValue).toLowerCase();
+      const bString = String(bValue).toLowerCase();
+      return sortConfig.direction === 'asc' 
+        ? aString.localeCompare(bString)
+        : bString.localeCompare(aString);
+    });
+  }, [displayedMaterials, sortConfig]);
+
+  // Fetch materials on mount
+  useEffect(() => {
+    fetchMaterials(1);
+  }, []);
+
+  // Get current page items
+  const getCurrentPageItems = () => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return displayedMaterials.slice(start, end);
+  };
 
   return (
     <div className="container mx-auto py-8">
@@ -429,9 +566,7 @@ export function MaterialsTableComponent() {
                       setSearchTerm(e.target.value);
                       applyFiltersAndOptions(
                         allMaterials,
-                        filters,
-                        displayOptions,
-                        e.target.value
+                        false
                       );
                     }}
                     className="pl-10"
@@ -556,23 +691,19 @@ export function MaterialsTableComponent() {
                       </Label>
                       <div className="pt-2">
                         <Slider
-                          value={indicatorRanges[indicatorId] || [0, 100]}
+                          value={filterRanges[indicatorId] || [0, maxIndicatorValues[indicatorId] || 100]}
                           min={0}
-                          max={indicator.id.includes("ubp") ? 1000 : 500}
+                          max={maxIndicatorValues[indicatorId] || 100}
                           step={1}
                           minStepsBetweenThumbs={1}
                           onValueChange={(value) => {
-                            setIndicatorRanges((prev) => ({
-                              ...prev,
-                              [indicatorId]: value as [number, number],
-                            }));
-                            // Filtering will be triggered by the useEffect above
+                            handleFilterChange(indicatorId, value as [number, number]);
                           }}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>{indicatorRanges[indicatorId]?.[0] || 0}</span>
+                          <span>{filterRanges[indicatorId]?.[0] || 0}</span>
                           <span>
-                            {indicatorRanges[indicatorId]?.[1] || 100}
+                            {filterRanges[indicatorId]?.[1] || maxIndicatorValues[indicatorId] || 100}
                           </span>
                         </div>
                       </div>
@@ -590,22 +721,54 @@ export function MaterialsTableComponent() {
                 <TableRow>
                   {visibleColumns.map((columnKey) => {
                     const column = columns.find((col) => col.key === columnKey);
+                    if (!column) return null;
+                    
+                    const headerContent = (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-sm">
+                            {column.label}
+                          </div>
+                          <button
+                            onClick={() => onSort(columnKey)}
+                            className="p-0 h-4 w-4 hover:text-foreground text-muted-foreground/50"
+                          >
+                            {sortConfig.key === columnKey ? (
+                              sortConfig.direction === 'asc' ? (
+                                <ArrowUp className="h-4 w-4" />
+                              ) : sortConfig.direction === 'desc' ? (
+                                <ArrowDown className="h-4 w-4" />
+                              ) : (
+                                <ArrowUpDown className="h-4 w-4" />
+                              )
+                            ) : (
+                              <ArrowUpDown className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        {column.unit && (
+                          <div className="text-xs text-muted-foreground">
+                            {column.unit}
+                          </div>
+                        )}
+                      </div>
+                    );
+
                     return (
-                      <TableHead key={columnKey} className="whitespace-nowrap">
-                        {column?.description ? (
+                      <TableHead key={columnKey} className="min-w-[120px]">
+                        {column.description ? (
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger className="cursor-help">
-                                {column.label}
-                                {column.unit && ` (${column.unit})`}
+                              <TooltipTrigger asChild>
+                                {headerContent}
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>{column.description}</p>
+                                <p className="max-w-xs text-sm">{column.description}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         ) : (
-                          column?.label
+                          headerContent
                         )}
                       </TableHead>
                     );
@@ -624,14 +787,12 @@ export function MaterialsTableComponent() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : getCurrentPageItems().length > 0 ? (
-                  getCurrentPageItems().map((material) => (
-                    <TableRow key={material.id}>
+                ) : sortedMaterials.length > 0 ? (
+                  sortedMaterials.map((material) => (
+                    <TableRow key={material.uuid}>
                       {visibleColumns.map((columnKey) => (
                         <TableCell key={columnKey}>
-                          {formatCellValue(
-                            material[columnKey as keyof KBOBMaterial]
-                          )}
+                          {formatCellValue(material[columnKey])}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -652,23 +813,77 @@ export function MaterialsTableComponent() {
 
           {/* Pagination section */}
           <div className="flex justify-between items-center mt-4">
-            <div className="text-sm text-muted-foreground">
-              Page {page} of {totalPages}
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setPageSize(newValue === 'All' ? 'All' : Number(newValue));
+                  }}
+                  className="h-8 w-[70px] rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button
-                variant="default"
+                variant="outline"
+                onClick={() => setPage(1)}
+                disabled={loading || page === 1}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={loading || page === 1}
               >
                 Previous
               </Button>
+              <div className="flex gap-1">
+                {getPaginationRange(page, totalPages).map((pageNum, idx) => (
+                  <Button
+                    key={idx}
+                    variant={pageNum === page ? "default" : "outline"}
+                    onClick={() => {
+                      if (typeof pageNum === 'number') {
+                        setPage(pageNum);
+                      }
+                    }}
+                    disabled={loading || pageNum === '...'}
+                    className={cn(
+                      "min-w-[40px]",
+                      pageNum === '...' && "cursor-default hover:bg-background"
+                    )}
+                  >
+                    {pageNum}
+                  </Button>
+                ))}
+              </div>
               <Button
-                variant="default"
+                variant="outline"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={loading || page === totalPages}
               >
                 Next
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPage(totalPages)}
+                disabled={loading || page === totalPages}
+              >
+                Last
               </Button>
             </div>
           </div>

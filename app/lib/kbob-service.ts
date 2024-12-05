@@ -119,7 +119,7 @@ export async function getRawMaterials(): Promise<Record<string, any>[]> {
 interface KBOBMaterial {
   id: string;
   uuid: string;
-  group?: string; // {{ edit_1 }} Made group optional
+  group?: string;
   nameDE: string;
   nameFR: string;
   density: string | null;
@@ -163,11 +163,18 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
   }
 
   const sheet = workbook.Sheets[sheetName];
-  const rawData = XLSX.utils.sheet_to_json<string[]>(sheet, {
+
+  // Set Excel reading options
+  const options = {
     header: 1,
-    raw: false,
+    raw: true,
     blankrows: false,
-  });
+    cellDates: true,
+    cellNF: true,
+    cellText: false
+  };
+
+  const rawData = XLSX.utils.sheet_to_json<string[]>(sheet, options);
 
   // Log raw data for debugging
   console.log("Raw Data:", rawData);
@@ -310,7 +317,7 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
         ),
       };
 
-      // Only validate German name exists and is not too short
+      // Validate German name exists and is not too short
       if (material.nameDE && material.nameDE.length > 2) {
         materials.push(material);
       } else {
@@ -333,6 +340,9 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
 
 function parseNumber(value: any): number | null {
   if (value === undefined || value === null || value === "") return null;
+
+  // If it's already a number, return it
+  if (typeof value === 'number') return value;
 
   // Convert to string and clean up the value
   const cleanValue = value
