@@ -13,63 +13,135 @@ interface Indicator {
 const INDICATOR_METADATA: Record<string, Omit<Indicator, "id">> = {
   ubp21Total: {
     label: "UBP Total",
-    unit: "UBP/unit",
+    unit: "UBP'21/unit",
     description:
-      "Total environmental impact using the Swiss Eco-points method (2021). Includes both production and disposal phases.",
+      "Total environmental impact of production and disposal according to the ecological scarcity method 2021 (UBP'21). Based on Swiss environmental policy.",
   },
   ubp21Production: {
     label: "UBP Production",
-    unit: "UBP/unit",
+    unit: "UBP'21/unit",
     description:
-      "Environmental impact of the production phase using Swiss Eco-points (2021). Includes raw material extraction and manufacturing.",
+      "Environmental impact of the production phase according to UBP'21. Includes resource consumption and emissions during raw material extraction, processing, and manufacturing phases.",
   },
   ubp21Disposal: {
     label: "UBP Disposal",
-    unit: "UBP/unit",
+    unit: "UBP'21/unit",
     description:
-      "Environmental impact of the disposal phase using Swiss Eco-points (2021). Includes end-of-life treatment and disposal processes.",
+      "Environmental impact of the disposal phase according to UBP'21. Quantifies impacts from waste treatment, recycling processes and final disposal.",
   },
   gwpTotal: {
     label: "GWP Total",
     unit: "kg CO₂ eq/unit",
     description:
-      "Total Global Warming Potential over 100 years. Sum of emissions from both production and disposal phases.",
+      "Total greenhouse gas emissions from production and disposal phases based on IPCC AR5 (2013). Biogenic carbon is considered separately.",
   },
   gwpProduction: {
     label: "GWP Production",
     unit: "kg CO₂ eq/unit",
     description:
-      "Global Warming Potential from the production phase. Includes emissions from raw material extraction and manufacturing.",
+      "Greenhouse gas emissions from production phase according to IPCC AR5 (2013). Includes emissions from raw material extraction and manufacturing.",
   },
   gwpDisposal: {
     label: "GWP Disposal",
     unit: "kg CO₂ eq/unit",
     description:
-      "Global Warming Potential from the disposal phase. Includes emissions from end-of-life treatment and disposal.",
+      "Greenhouse gas emissions from disposal phase according to IPCC AR5 (2013). Includes emissions from waste treatment and disposal processes.",
   },
   biogenicCarbon: {
     label: "Biogenic Carbon",
     unit: "kg C/unit",
     description:
-      "Amount of carbon stored in biological materials. Important for understanding carbon sequestration in bio-based materials.",
+      "Carbon content stored in bio-based building materials (e.g., wood, straw) according to EN 15804:2012+A2:2019. Quantifies carbon in renewable materials.",
   },
   primaryEnergyTotal: {
     label: "Primary Energy Total",
-    unit: "MJ/unit",
+    unit: "kWh oil-eq/unit",
     description:
-      "Total primary energy consumption throughout the lifecycle. Includes both renewable and non-renewable energy sources.",
+      "Total cumulative energy demand, sum of renewable and non-renewable primary energy.",
   },
-  primaryEnergyProduction: {
-    label: "Primary Energy Production",
-    unit: "MJ/unit",
+  primaryEnergyProductionTotal: {
+    label: "Primary Energy Production Total",
+    unit: "kWh oil-eq/unit",
     description:
-      "Primary energy consumption during production phase. Includes energy for raw material extraction and manufacturing.",
+      "Total cumulative energy demand during production, including both material and energetic use.",
+  },
+  primaryEnergyProductionEnergetic: {
+    label: "Primary Energy Production Energetic",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Primary energy used as energy source during production phase.",
+  },
+  primaryEnergyProductionMaterial: {
+    label: "Primary Energy Production Material",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Primary energy embodied in materials during production phase.",
   },
   primaryEnergyDisposal: {
     label: "Primary Energy Disposal",
-    unit: "MJ/unit",
+    unit: "kWh oil-eq/unit",
     description:
-      "Primary energy consumption during disposal phase. Includes energy for end-of-life treatment and disposal processes.",
+      "Cumulative energy demand during disposal phase.",
+  },
+  primaryEnergyRenewableTotal: {
+    label: "Primary Energy Renewable Total",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Total renewable primary energy from hydropower, biomass (excl. primary forest clearing), solar, wind, geothermal, and ambient heat sources.",
+  },
+  primaryEnergyRenewableProductionTotal: {
+    label: "Primary Energy Renewable Production Total",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Renewable primary energy consumption during production phase, including energetic and material use.",
+  },
+  primaryEnergyRenewableProductionEnergetic: {
+    label: "Primary Energy Renewable Production Energetic",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Renewable primary energy used as energy source during production.",
+  },
+  primaryEnergyRenewableProductionMaterial: {
+    label: "Primary Energy Renewable Production Material",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Renewable primary energy embodied in materials during production.",
+  },
+  primaryEnergyRenewableDisposal: {
+    label: "Primary Energy Renewable Disposal",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Renewable primary energy consumption during disposal phase.",
+  },
+  primaryEnergyNonRenewableTotal: {
+    label: "Primary Energy Non-Renewable Total",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Total non-renewable primary energy (grey energy) from fossil and nuclear sources, including wood from primary forest clearing.",
+  },
+  primaryEnergyNonRenewableProductionTotal: {
+    label: "Primary Energy Non-Renewable Production Total",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Non-renewable primary energy consumption during production, including energetic and material use.",
+  },
+  primaryEnergyNonRenewableProductionEnergetic: {
+    label: "Primary Energy Non-Renewable Production Energetic",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Non-renewable primary energy used as energy source during production.",
+  },
+  primaryEnergyNonRenewableProductionMaterial: {
+    label: "Primary Energy Non-Renewable Production Material",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Non-renewable primary energy embodied in materials during production.",
+  },
+  primaryEnergyNonRenewableDisposal: {
+    label: "Primary Energy Non-Renewable Disposal",
+    unit: "kWh oil-eq/unit",
+    description:
+      "Non-renewable primary energy consumption during disposal phase.",
   },
 };
 
