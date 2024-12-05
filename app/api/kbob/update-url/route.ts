@@ -1,8 +1,22 @@
-// app/api/kbob/route.ts
+// app/api/kbob/update-url/route.ts
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import axios from 'axios';
 
 const KBOB_URL_KEY = 'kbob/excel_url';
+
+async function sendSlackNotification(message: string) {
+  if (!process.env.SLACK_WEBHOOK_URL) {
+    console.warn('No Slack webhook URL configured');
+    return;
+  }
+
+  try {
+    await axios.post(process.env.SLACK_WEBHOOK_URL, { text: message });
+  } catch (error) {
+    console.error('Failed to send Slack notification:', error);
+  }
+}
 
 export async function PUT(request: Request) {
   try {
@@ -17,6 +31,9 @@ export async function PUT(request: Request) {
 
     // Store the URL
     await kv.set(KBOB_URL_KEY, url);
+
+    // Send notification about URL update
+    await sendSlackNotification(` KBOB URL updated!\n• New URL: ${url}\n• Please trigger an ingestion to fetch new data.`);
 
     return NextResponse.json({
       success: true,

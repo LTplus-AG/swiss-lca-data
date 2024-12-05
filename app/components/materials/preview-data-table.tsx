@@ -13,6 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, Search, Filter } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface KBOBMaterial {
   id: string;
@@ -77,42 +86,30 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
   };
 
   useEffect(() => {
+    if (!initialData) {
+      fetchData();
+    }
+  }, [page, search]);
+
+  useEffect(() => {
     if (initialData && Array.isArray(initialData) && initialData.length > 0) {
       setData(initialData);
       setTotalPages(Math.ceil(initialData.length / 10));
       setLoading(false);
     } else if (initialData) {
-      // If initialData is empty array
       setData([]);
       setTotalPages(1);
       setLoading(false);
-    } else {
-      fetchData();
     }
-  }, [initialData, fetchData]);
-
-  const getPaginatedData = () => {
-    let filteredData = data;
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredData = data.filter((material) =>
-        Object.values(material).some((value) =>
-          value?.toString().toLowerCase().includes(searchLower)
-        )
-      );
-    }
-    const start = (page - 1) * 10;
-    const end = start + 10;
-    return filteredData.slice(start, end);
-  };
-
-  const handleRefresh = () => {
-    fetchData();
-  };
+  }, [initialData]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   if (loading) {
@@ -131,7 +128,7 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
         <CardContent className="p-6">
           <div className="text-center text-red-500">
             <p>{error}</p>
-            <Button onClick={handleRefresh} variant="outline" className="mt-4">
+            <Button onClick={fetchData} variant="outline" className="mt-4">
               Try Again
             </Button>
           </div>
@@ -147,11 +144,7 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
           <div className="text-center">
             <p className="text-gray-500">No materials data available.</p>
             {!initialData && (
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                className="mt-4"
-              >
+              <Button onClick={fetchData} variant="outline" className="mt-4">
                 Refresh
               </Button>
             )}
@@ -181,88 +174,99 @@ export function KbobDataTable({ initialData }: KbobDataTableProps) {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-            </Button>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Name (DE)</TableHead>
                   <TableHead>Name (FR)</TableHead>
                   <TableHead>Group</TableHead>
-                  <TableHead>Density</TableHead>
                   <TableHead>Unit</TableHead>
-                  <TableHead>UBP Total</TableHead>
-                  <TableHead>UBP Production</TableHead>
-                  <TableHead>UBP Disposal</TableHead>
-                  <TableHead>Primary Energy Total</TableHead>
                   <TableHead>GWP Total</TableHead>
-                  <TableHead>GWP Production</TableHead>
-                  <TableHead>GWP Disposal</TableHead>
-                  <TableHead>Biogenic Carbon</TableHead>
+                  <TableHead>UBP Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {getPaginatedData().map((material) => (
-                  <TableRow key={material.id}>
-                    <TableCell>{material.id}</TableCell>
+                {data.map((material) => (
+                  <TableRow key={material.uuid}>
                     <TableCell>{material.nameDE}</TableCell>
                     <TableCell>{material.nameFR}</TableCell>
                     <TableCell>{material.group}</TableCell>
-                    <TableCell>{material.density || "-"}</TableCell>
                     <TableCell>{material.unit}</TableCell>
-                    <TableCell>
-                      {material.ubp21Total?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {material.ubp21Production?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {material.ubp21Disposal?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {material.primaryEnergyTotal?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>{material.gwpTotal?.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {material.gwpProduction?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {material.gwpDisposal?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {material.biogenicCarbon?.toLocaleString()}
-                    </TableCell>
+                    <TableCell>{material.gwpTotal}</TableCell>
+                    <TableCell>{material.ubp21Total}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
 
-          <div className="flex justify-between items-center">
-            <Button
-              variant="outline"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-gray-600">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              Next
-            </Button>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4">
+              <PaginationPrevious
+                onClick={() => page > 1 && handlePageChange(page - 1)}
+                disabled={page === 1}
+              />
+              
+              {/* First page */}
+              <PaginationLink
+                onClick={() => handlePageChange(1)}
+                isActive={page === 1}
+              >
+                1
+              </PaginationLink>
+
+              {/* Left ellipsis */}
+              {page > 3 && <PaginationEllipsis />}
+
+              {/* Pages before current */}
+              {page > 2 && (
+                <PaginationLink
+                  onClick={() => handlePageChange(page - 1)}
+                >
+                  {page - 1}
+                </PaginationLink>
+              )}
+
+              {/* Current page (if not first or last) */}
+              {page !== 1 && page !== totalPages && (
+                <PaginationLink
+                  isActive={true}
+                >
+                  {page}
+                </PaginationLink>
+              )}
+
+              {/* Pages after current */}
+              {page < totalPages - 1 && (
+                <PaginationLink
+                  onClick={() => handlePageChange(page + 1)}
+                >
+                  {page + 1}
+                </PaginationLink>
+              )}
+
+              {/* Right ellipsis */}
+              {page < totalPages - 2 && <PaginationEllipsis />}
+
+              {/* Last page */}
+              {totalPages > 1 && (
+                <PaginationLink
+                  onClick={() => handlePageChange(totalPages)}
+                  isActive={page === totalPages}
+                >
+                  {totalPages}
+                </PaginationLink>
+              )}
+
+              <PaginationNext
+                onClick={() => page < totalPages && handlePageChange(page + 1)}
+                disabled={page === totalPages}
+              />
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

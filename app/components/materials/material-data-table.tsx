@@ -153,7 +153,21 @@ interface KBOBMaterial {
   gwpProduction: number | null;
   gwpDisposal: number | null;
   biogenicCarbon: number | null;
+  primaryEnergyTotal: number | null;
+  primaryEnergyProductionTotal: number | null;
+  primaryEnergyProductionEnergetic: number | null;
+  primaryEnergyProductionMaterial: number | null;
+  primaryEnergyDisposal: number | null;
+  primaryEnergyRenewableTotal: number | null;
+  primaryEnergyRenewableProductionTotal: number | null;
+  primaryEnergyRenewableProductionEnergetic: number | null;
+  primaryEnergyRenewableProductionMaterial: number | null;
+  primaryEnergyRenewableDisposal: number | null;
   primaryEnergyNonRenewableTotal: number | null;
+  primaryEnergyNonRenewableProductionTotal: number | null;
+  primaryEnergyNonRenewableProductionEnergetic: number | null;
+  primaryEnergyNonRenewableProductionMaterial: number | null;
+  primaryEnergyNonRenewableDisposal: number | null;
 }
 
 // Add new interface for indicators
@@ -181,7 +195,10 @@ export function MaterialsTableComponent() {
   );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [pageSize, setPageSize] = useState(10);
+  const pageSizeOptions = [10, 20, 50, 100, 'All'] as const;
+  type PageSizeOption = (typeof pageSizeOptions)[number];
+  const ITEMS_PER_PAGE = pageSize;
 
   // Add state for indicators
   const [indicators, setIndicators] = useState<Indicator[]>([]);
@@ -271,33 +288,72 @@ export function MaterialsTableComponent() {
     );
   }, [columns, columnSearchTerm]);
 
-  // Update fetchAllMaterials function to use the correct endpoint
-  const fetchAllMaterials = async () => {
+  // Update fetchAllMaterials function to use pagination
+  const fetchMaterials = async (currentPage: number) => {
     try {
       setLoading(true);
-      const response = await fetch("/api/kbob/materials", {
+      const pageSizeParam = pageSize === 'All' ? 'all' : pageSize;
+      const response = await fetch(`/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}&search=${searchTerm}`, {
         headers: {
           'Authorization': `Bearer ${clientConfig.API_KEY}`
         }
       });
       const data = await response.json();
 
-      if (data.success && Array.isArray(data.materials)) {
-        setAllMaterials(data.materials);
-        // Set displayed materials directly without filtering
+      if (data.success) {
         setDisplayedMaterials(data.materials);
+        setTotalPages(data.totalPages);
+        setPage(data.currentPage);
       } else {
         console.error("Invalid data format received:", data);
-        setAllMaterials([]);
         setDisplayedMaterials([]);
       }
     } catch (error) {
       console.error("Error fetching materials:", error);
-      setAllMaterials([]);
       setDisplayedMaterials([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Update useEffect to use the new fetch function
+  useEffect(() => {
+    fetchMaterials(page);
+  }, [page, searchTerm, pageSize]);
+
+  // Add pagination range function
+  const getPaginationRange = (currentPage: number, totalPages: number) => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    range.push(1);
+
+    if (totalPages <= 1) {
+      return range;
+    }
+
+    for (let i = currentPage - delta; i <= currentPage + delta; i++) {
+      if (i < totalPages && i > 1) {
+        range.push(i);
+      }
+    }
+    range.push(totalPages);
+
+    for (let i = 0; i < range.length; i++) {
+      if (l) {
+        if (range[i] - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (range[i] - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(range[i]);
+      l = range[i];
+    }
+
+    return rangeWithDots;
   };
 
   // Calculate max values for indicators with 5% buffer
@@ -474,7 +530,7 @@ export function MaterialsTableComponent() {
 
   // Fetch materials on mount
   useEffect(() => {
-    fetchAllMaterials();
+    fetchMaterials(1);
   }, []);
 
   // Get current page items
@@ -757,23 +813,77 @@ export function MaterialsTableComponent() {
 
           {/* Pagination section */}
           <div className="flex justify-between items-center mt-4">
-            <div className="text-sm text-muted-foreground">
-              Page {page} of {totalPages}
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setPageSize(newValue === 'All' ? 'All' : Number(newValue));
+                  }}
+                  className="h-8 w-[70px] rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button
-                variant="default"
+                variant="outline"
+                onClick={() => setPage(1)}
+                disabled={loading || page === 1}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={loading || page === 1}
               >
                 Previous
               </Button>
+              <div className="flex gap-1">
+                {getPaginationRange(page, totalPages).map((pageNum, idx) => (
+                  <Button
+                    key={idx}
+                    variant={pageNum === page ? "default" : "outline"}
+                    onClick={() => {
+                      if (typeof pageNum === 'number') {
+                        setPage(pageNum);
+                      }
+                    }}
+                    disabled={loading || pageNum === '...'}
+                    className={cn(
+                      "min-w-[40px]",
+                      pageNum === '...' && "cursor-default hover:bg-background"
+                    )}
+                  >
+                    {pageNum}
+                  </Button>
+                ))}
+              </div>
               <Button
-                variant="default"
+                variant="outline"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={loading || page === totalPages}
               >
                 Next
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPage(totalPages)}
+                disabled={loading || page === totalPages}
+              >
+                Last
               </Button>
             </div>
           </div>
