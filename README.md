@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Swiss LCA Data
+
+A web application providing access to environmental impact data for construction materials, sourced from KBOB (Koordinationskonferenz der Bau- und Liegenschaftsorgane der öffentlichen Bauherren).
+
+## Features
+
+- **Material Search**: Search and filter construction materials by various criteria
+- **Data Explorer**: Interactive visualization of environmental impact data
+- **BIM Integration**: Tools for integrating LCA data with BIM software
+- **API Access**: RESTful API for programmatic access to the data
+
+## Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Vercel account (for KV storage)
+- Clerk account (for authentication)
+
+## Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+```bash
+# API Configuration
+API_SECRET_KEY=your_api_secret_key
+NEXT_PUBLIC_API_URL=http://localhost:3000
+
+# Vercel KV Storage
+KV_REST_API_URL=your_kv_url
+KV_REST_API_TOKEN=your_kv_token
+
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+
+# Admin Access
+NEXT_PUBLIC_ADMIN_USER_ID=your_admin_user_id
+NEXT_PUBLIC_ADMIN_PASSWORD=your_admin_password
+```
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/swisslcadata.git
+cd swisslcadata
+```
 
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Run the development server:
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+For detailed API documentation, visit `/api-access` in the web application.
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data Source
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This application uses data from KBOB (Koordinationskonferenz der Bau- und Liegenschaftsorgane der öffentlichen Bauherren). The data is not created or verified by us. For more information, visit [KBOB: Ökobilanzdaten im Baubereich](https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
