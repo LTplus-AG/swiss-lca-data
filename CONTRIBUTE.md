@@ -19,11 +19,11 @@ We use GitHub to host code, to track issues and feature requests, as well as acc
 4. Make sure your code lints.
 5. Issue that pull request!
 
-## Any contributions you make will be under the MIT Software License
-In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers the project. Feel free to contact the maintainers if that's a concern.
+## Any contributions you make will be under the AGPL-3.0 Software License
+In short, when you submit code changes, your submissions are understood to be under the same [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.en.html) that covers the project. Feel free to contact the maintainers if that's a concern.
 
-## Report bugs using Github's [issue tracker](https://github.com/yourusername/swisslcadata/issues)
-We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/yourusername/swisslcadata/issues/new); it's that easy!
+## Report bugs using Github's [issue tracker](https://github.com/louistrue/swisslcadata/issues)
+We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/louistrue/swisslcadata/issues/new); it's that easy!
 
 ## Write bug reports with detail, background, and sample code
 
@@ -44,4 +44,4 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 * You can try running `npm run lint` for style unification
 
 ## License
-By contributing, you agree that your contributions will be licensed under its MIT License.
+By contributing, you agree that your contributions will be licensed under its GNU Affero General Public License v3.0.

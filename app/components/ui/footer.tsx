@@ -79,30 +79,19 @@ export function FooterComponent() {
               <Mail className="w-5 h-5" />
               <span className="sr-only">Email</span>
             </Link>
-            <div className="relative">
-              <button
-                onMouseEnter={() => setShowPopup(true)}
-                onMouseLeave={() => setShowPopup(false)}
-                className="text-muted-foreground hover:text-primary focus:outline-none"
-                aria-label="GitHub Repository"
-              >
-                <Github className="w-5 h-5" />
-              </button>
-              {showPopup && (
-                <div className="absolute bottom-full right-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-lg p-4 text-sm text-card-foreground">
-                  <p className="font-semibold mb-2">🚧 Under Construction 🚧</p>
-                  <p>Some clean up still outstanding....</p>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Check back soon for our GitHub repo!
-                  </div>
-                  <div className="absolute bottom-0 right-4 transform translate-y-1/2 w-3 h-3 bg-card border-b border-r border-border transform rotate-45"></div>
-                </div>
-              )}
-            </div>
+            <Link
+              href="https://github.com/louistrue/swisslcadata"
+              className="text-muted-foreground hover:text-primary"
+              target="_blank"
+              aria-label="GitHub Repository"
+            >
+              <Github className="w-5 h-5" />
+              <span className="sr-only">GitHub</span>
+            </Link>
           </div>
         </div>
         <div className="mt-4 pt-4 border-t text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} LCA data. All rights reserved.
+          {new Date().getFullYear()} LCA data. All rights reserved.
         </div>
       </div>
     </footer>
