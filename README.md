@@ -42,7 +42,7 @@ NEXT_PUBLIC_ADMIN_PASSWORD=your_admin_password
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/swisslcadata.git
+git clone https://github.com/louistrue/swisslcadata.git
 cd swisslcadata
 ```
 
@@ -76,7 +76,7 @@ This application uses data from KBOB (Koordinationskonferenz der Bau- und Liegen
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) - see the [LICENSE](LICENSE) file for details.
 
 ## Deploy on Vercel
 
