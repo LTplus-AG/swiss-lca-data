@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, SlidersHorizontal, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -184,9 +190,11 @@ export function MaterialsTableComponent() {
   const [visibleColumns, setVisibleColumns] = useState([
     "id",
     "nameDE",
+    "density",
+    "unit",
     "ubp21Total",
     "gwpTotal",
-    "primaryEnergyNonRenewableTotal"
+    "primaryEnergyNonRenewableTotal",
   ]);
   const [loading, setLoading] = useState(true);
   const [allMaterials, setAllMaterials] = useState<KBOBMaterial[]>([]); // Store all materials
@@ -195,10 +203,11 @@ export function MaterialsTableComponent() {
   );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const pageSizeOptions = [10, 20, 50, 100, 'All'] as const;
+  const pageSizeOptions = [20, 50, 100, "All"] as const;
   type PageSizeOption = (typeof pageSizeOptions)[number];
-  const ITEMS_PER_PAGE = pageSize;
+  const [pageSize, setPageSize] = useState<PageSizeOption>(20);
+  const ITEMS_PER_PAGE =
+    typeof pageSize === "number" ? pageSize : Number.MAX_SAFE_INTEGER;
 
   // Add state for indicators
   const [indicators, setIndicators] = useState<Indicator[]>([]);
@@ -209,8 +218,8 @@ export function MaterialsTableComponent() {
       try {
         const response = await fetch("/api/kbob/indicators", {
           headers: {
-            'Authorization': `Bearer ${clientConfig.API_KEY}`
-          }
+            Authorization: `Bearer ${clientConfig.API_KEY}`,
+          },
         });
         const data = await response.json();
         if (data.success && Array.isArray(data.indicators)) {
@@ -234,16 +243,18 @@ export function MaterialsTableComponent() {
     () => [
       { key: "id", label: "ID" },
       { key: "nameDE", label: "Name (DE)" },
+      { key: "density", label: "Density", description: "Material density" },
+      { key: "unit", label: "Unit", description: "Measurement unit" },
       { key: "ubp21Total", label: "UBP Total", unit: "UBP'21" },
       { key: "gwpTotal", label: "GWP Total", unit: "kg CO₂ eq" },
-      { 
-        key: "primaryEnergyNonRenewableTotal", 
-        label: "Primary Energy Non-Renewable Total", 
-        unit: "kWh oil-eq" 
+      {
+        key: "primaryEnergyNonRenewableTotal",
+        label: "Primary Energy Non-Renewable Total",
+        unit: "kWh oil-eq",
       },
       // Keep other columns but they won't be visible by default
       ...indicators
-        .filter(indicator => !visibleColumns.includes(indicator.id))
+        .filter((indicator) => !visibleColumns.includes(indicator.id))
         .map((indicator) => ({
           key: indicator.id,
           label: indicator.label,
@@ -292,15 +303,20 @@ export function MaterialsTableComponent() {
   const fetchMaterials = async (currentPage: number) => {
     try {
       setLoading(true);
-      const pageSizeParam = pageSize === 'All' ? 'all' : pageSize;
-      const response = await fetch(`/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}&search=${searchTerm}`, {
-        headers: {
-          'Authorization': `Bearer ${clientConfig.API_KEY}`
+      const pageSizeParam = pageSize === "All" ? "all" : pageSize;
+      const searchQuery = searchTerm ? `&search=${searchTerm}` : "";
+      const response = await fetch(
+        `/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}${searchQuery}`,
+        {
+          headers: {
+            Authorization: `Bearer ${clientConfig.API_KEY}`,
+          },
         }
-      });
+      );
       const data = await response.json();
 
       if (data.success) {
+        setAllMaterials(data.materials);
         setDisplayedMaterials(data.materials);
         setTotalPages(data.totalPages);
         setPage(data.currentPage);
@@ -346,7 +362,7 @@ export function MaterialsTableComponent() {
         if (range[i] - l === 2) {
           rangeWithDots.push(l + 1);
         } else if (range[i] - l !== 1) {
-          rangeWithDots.push('...');
+          rangeWithDots.push("...");
         }
       }
       rangeWithDots.push(range[i]);
@@ -359,27 +375,31 @@ export function MaterialsTableComponent() {
   // Calculate max values for indicators with 5% buffer
   const maxIndicatorValues = useMemo(() => {
     const maxValues: Record<string, number> = {};
-    
+
     if (allMaterials.length > 0) {
       indicators.forEach((indicator) => {
-        const max = Math.max(...allMaterials.map(material => 
-          material[indicator.id] !== null ? material[indicator.id] : 0
-        ));
+        const max = Math.max(
+          ...allMaterials.map((material) =>
+            material[indicator.id] !== null ? material[indicator.id] : 0
+          )
+        );
         // Add 5% buffer and round to nearest integer
         maxValues[indicator.id] = Math.round(max * 1.05);
       });
     }
-    
+
     return maxValues;
   }, [allMaterials, indicators]);
 
   // Update filterRanges state to use dynamic max values
-  const [filterRanges, setFilterRanges] = useState<Record<string, [number, number]>>({});
+  const [filterRanges, setFilterRanges] = useState<
+    Record<string, [number, number]>
+  >({});
 
   // Initialize filter ranges when indicators or maxValues change
   useEffect(() => {
     const newRanges: Record<string, [number, number]> = {};
-    
+
     indicators.forEach((indicator) => {
       const maxValue = maxIndicatorValues[indicator.id] || 0;
       // Set initial range from 0 to max, but don't trigger filtering
@@ -426,11 +446,11 @@ export function MaterialsTableComponent() {
 
   // Handle filters change
   const handleFilterChange = (indicatorId: string, range: [number, number]) => {
-    setFilterRanges(prev => ({
+    setFilterRanges((prev) => ({
       ...prev,
-      [indicatorId]: range
+      [indicatorId]: range,
     }));
-    
+
     // Apply filters with the updated ranges, don't skip filters here
     applyFiltersAndOptions(allMaterials, false);
   };
@@ -480,8 +500,8 @@ export function MaterialsTableComponent() {
   // Add state for sorting
   const [sortConfig, setSortConfig] = useState<{
     key: string;
-    direction: 'asc' | 'desc' | null;
-  }>({ key: '', direction: null });
+    direction: "asc" | "desc" | null;
+  }>({ key: "", direction: null });
 
   // Add sorting function
   const onSort = (columnKey: string) => {
@@ -490,55 +510,107 @@ export function MaterialsTableComponent() {
         // Cycle through: asc -> desc -> no sort
         return {
           key: columnKey,
-          direction: currentSort.direction === 'asc' ? 'desc' : 
-                    currentSort.direction === 'desc' ? null : 'asc'
+          direction:
+            currentSort.direction === "asc"
+              ? "desc"
+              : currentSort.direction === "desc"
+              ? null
+              : "asc",
         };
       }
       // First click on a column sets ascending sort
-      return { key: columnKey, direction: 'asc' };
+      return { key: columnKey, direction: "asc" };
     });
   };
 
-  // Update material sorting
+  // First, define the indicator filter states and handlers
+  const [indicatorRangeFilters, setIndicatorRangeFilters] = useState<
+    Record<string, [number, number]>
+  >({});
+
+  const handleIndicatorRangeChange = (id: string, range: [number, number]) => {
+    console.log("Indicator range filter updated for", id, "to", range);
+    setIndicatorRangeFilters((prev) => ({ ...prev, [id]: range }));
+  };
+
+  // Then compute filteredMaterials
+  const filteredMaterials = useMemo(() => {
+    return allMaterials.filter((material) => {
+      // Apply both search and indicator filters
+      const matchesSearch = searchTerm
+        ? material.nameDE?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          material.group?.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+
+      const matchesIndicators = Object.keys(indicatorRangeFilters).every(
+        (indId) => {
+          const [filterMin, filterMax] = indicatorRangeFilters[indId];
+          const value = material[indId];
+          if (value === null || value === undefined) return true;
+          return value >= filterMin && value <= filterMax;
+        }
+      );
+
+      return matchesSearch && matchesIndicators;
+    });
+  }, [allMaterials, indicatorRangeFilters, searchTerm]);
+
+  // Then define sortedMaterials using the filtered list
   const sortedMaterials = useMemo(() => {
     if (!sortConfig.direction || !sortConfig.key) {
-      return displayedMaterials;
+      return filteredMaterials;
     }
-
-    return [...displayedMaterials].sort((a, b) => {
+    return [...filteredMaterials].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
-
       // Handle null values
       if (aValue === null && bValue === null) return 0;
       if (aValue === null) return 1;
       if (bValue === null) return -1;
-
       // Handle numeric values
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortConfig.direction === "asc"
+          ? aValue - bValue
+          : bValue - aValue;
       }
-
-      // Handle string values
+      // Fallback to string compare
       const aString = String(aValue).toLowerCase();
       const bString = String(bValue).toLowerCase();
-      return sortConfig.direction === 'asc' 
+      return sortConfig.direction === "asc"
         ? aString.localeCompare(bString)
         : bString.localeCompare(aString);
     });
-  }, [displayedMaterials, sortConfig]);
+  }, [filteredMaterials, sortConfig]);
+
+  // Finally, define getCurrentPageItems
+  const getCurrentPageItems = () => {
+    if (pageSize === "All") {
+      return sortedMaterials;
+    }
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return sortedMaterials.slice(start, end);
+  };
 
   // Fetch materials on mount
   useEffect(() => {
     fetchMaterials(1);
   }, []);
 
-  // Get current page items
-  const getCurrentPageItems = () => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    return displayedMaterials.slice(start, end);
-  };
+  // NEW: Dummy default max value for indicators (replace with dynamic values if available)
+  const defaultIndicatorMax = 100;
+
+  // DEBUG: Log filtering conditions and counts
+  useEffect(() => {
+    console.log("DEBUG: searchTerm =", searchTerm);
+    console.log("DEBUG: indicatorRangeFilters =", indicatorRangeFilters);
+    console.log("DEBUG: allMaterials count =", allMaterials.length);
+    console.log("DEBUG: filteredMaterials count =", filteredMaterials.length);
+    // Optionally, log a sample of filtered materials
+    if (filteredMaterials.length > 0) {
+      console.log("DEBUG: Sample filtered material:", filteredMaterials[0]);
+    }
+  }, [searchTerm, indicatorRangeFilters, allMaterials, filteredMaterials]);
 
   return (
     <div className="container mx-auto py-8">
@@ -564,10 +636,6 @@ export function MaterialsTableComponent() {
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
-                      applyFiltersAndOptions(
-                        allMaterials,
-                        false
-                      );
                     }}
                     className="pl-10"
                   />
@@ -633,83 +701,109 @@ export function MaterialsTableComponent() {
 
               {/* Indicator selection for filters */}
               <div>
-                <Label>Filter by Indicators</Label>
+                <Label>Filter by Indicator Ranges</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full mt-2">
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      Selected Indicators ({selectedIndicatorFilters.length})
+                      Adjust Indicator Ranges
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[400px]" align="end">
+                  <DropdownMenuContent
+                    className="w-[400px] max-h-[600px] overflow-y-auto"
+                    align="end"
+                  >
                     <div className="p-2">
-                      <div className="max-h-[300px] overflow-y-auto">
-                        {indicators.map((indicator) => (
-                          <DropdownMenuCheckboxItem
-                            key={indicator.id}
-                            checked={selectedIndicatorFilters.includes(
-                              indicator.id
-                            )}
-                            onCheckedChange={(checked) => {
-                              setSelectedIndicatorFilters((prev) =>
-                                checked
-                                  ? [...prev, indicator.id]
-                                  : prev.filter((id) => id !== indicator.id)
-                              );
-                            }}
-                            className="py-2"
-                          >
-                            <div className="flex flex-col">
-                              <span>{indicator.label}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {indicator.description}
-                              </span>
-                            </div>
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </div>
+                      {indicators.map((indicator, index) => (
+                        <div
+                          key={`${indicator.id}-${index}`}
+                          className="mb-4 border-b pb-2"
+                        >
+                          <div className="flex justify-between">
+                            <span>{indicator.label}</span>
+                            <span>
+                              {indicatorRangeFilters[indicator.id]
+                                ? `${
+                                    indicatorRangeFilters[indicator.id][0]
+                                  } - ${indicatorRangeFilters[indicator.id][1]}`
+                                : `0 - ${
+                                    maxIndicatorValues[indicator.id] ||
+                                    defaultIndicatorMax
+                                  }`}
+                            </span>
+                          </div>
+                          <div className="flex space-x-2 items-center mt-1">
+                            <Input
+                              type="number"
+                              className="w-20"
+                              value={
+                                indicatorRangeFilters[indicator.id]?.[0] ?? 0
+                              }
+                              onChange={(e) => {
+                                const newLower = Number(e.target.value);
+                                const current = indicatorRangeFilters[
+                                  indicator.id
+                                ] || [
+                                  0,
+                                  maxIndicatorValues[indicator.id] ||
+                                    defaultIndicatorMax,
+                                ];
+                                handleIndicatorRangeChange(indicator.id, [
+                                  newLower,
+                                  current[1],
+                                ]);
+                              }}
+                            />
+                            <Slider
+                              min={0}
+                              max={
+                                maxIndicatorValues[indicator.id] ||
+                                defaultIndicatorMax
+                              }
+                              step={1}
+                              value={
+                                indicatorRangeFilters[indicator.id] || [
+                                  0,
+                                  maxIndicatorValues[indicator.id] ||
+                                    defaultIndicatorMax,
+                                ]
+                              }
+                              onValueChange={(val: number[]) =>
+                                handleIndicatorRangeChange(indicator.id, [
+                                  val[0],
+                                  val[1],
+                                ])
+                              }
+                            />
+                            <Input
+                              type="number"
+                              className="w-20"
+                              value={
+                                indicatorRangeFilters[indicator.id]?.[1] ??
+                                (maxIndicatorValues[indicator.id] ||
+                                  defaultIndicatorMax)
+                              }
+                              onChange={(e) => {
+                                const newUpper = Number(e.target.value);
+                                const current = indicatorRangeFilters[
+                                  indicator.id
+                                ] || [
+                                  0,
+                                  maxIndicatorValues[indicator.id] ||
+                                    defaultIndicatorMax,
+                                ];
+                                handleIndicatorRangeChange(indicator.id, [
+                                  current[0],
+                                  newUpper,
+                                ]);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-
-              {/* Indicator range sliders */}
-              <div className="space-y-6">
-                {selectedIndicatorFilters.map((indicatorId) => {
-                  const indicator = indicators.find(
-                    (i) => i.id === indicatorId
-                  );
-                  if (!indicator) return null;
-
-                  return (
-                    <div key={indicatorId} className="space-y-2">
-                      <Label className="flex items-center justify-between">
-                        <span>{indicator.label}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({indicator.unit})
-                        </span>
-                      </Label>
-                      <div className="pt-2">
-                        <Slider
-                          value={filterRanges[indicatorId] || [0, maxIndicatorValues[indicatorId] || 100]}
-                          min={0}
-                          max={maxIndicatorValues[indicatorId] || 100}
-                          step={1}
-                          minStepsBetweenThumbs={1}
-                          onValueChange={(value) => {
-                            handleFilterChange(indicatorId, value as [number, number]);
-                          }}
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>{filterRanges[indicatorId]?.[0] || 0}</span>
-                          <span>
-                            {filterRanges[indicatorId]?.[1] || maxIndicatorValues[indicatorId] || 100}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </CardContent>
           </Card>
@@ -722,7 +816,7 @@ export function MaterialsTableComponent() {
                   {visibleColumns.map((columnKey) => {
                     const column = columns.find((col) => col.key === columnKey);
                     if (!column) return null;
-                    
+
                     const headerContent = (
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
@@ -734,9 +828,9 @@ export function MaterialsTableComponent() {
                             className="p-0 h-4 w-4 hover:text-foreground text-muted-foreground/50"
                           >
                             {sortConfig.key === columnKey ? (
-                              sortConfig.direction === 'asc' ? (
+                              sortConfig.direction === "asc" ? (
                                 <ArrowUp className="h-4 w-4" />
-                              ) : sortConfig.direction === 'desc' ? (
+                              ) : sortConfig.direction === "desc" ? (
                                 <ArrowDown className="h-4 w-4" />
                               ) : (
                                 <ArrowUpDown className="h-4 w-4" />
@@ -763,7 +857,9 @@ export function MaterialsTableComponent() {
                                 {headerContent}
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="max-w-xs text-sm">{column.description}</p>
+                                <p className="max-w-xs text-sm">
+                                  {column.description}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -788,7 +884,7 @@ export function MaterialsTableComponent() {
                     </TableCell>
                   </TableRow>
                 ) : sortedMaterials.length > 0 ? (
-                  sortedMaterials.map((material) => (
+                  getCurrentPageItems().map((material) => (
                     <TableRow key={material.uuid}>
                       {visibleColumns.map((columnKey) => (
                         <TableCell key={columnKey}>
@@ -823,7 +919,11 @@ export function MaterialsTableComponent() {
                   value={pageSize}
                   onChange={(e) => {
                     const newValue = e.target.value;
-                    setPageSize(newValue === 'All' ? 'All' : Number(newValue));
+                    setPageSize(
+                      newValue === "All"
+                        ? "All"
+                        : (Number(newValue) as PageSizeOption)
+                    );
                   }}
                   className="h-8 w-[70px] rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
@@ -857,14 +957,14 @@ export function MaterialsTableComponent() {
                     key={idx}
                     variant={pageNum === page ? "default" : "outline"}
                     onClick={() => {
-                      if (typeof pageNum === 'number') {
+                      if (typeof pageNum === "number") {
                         setPage(pageNum);
                       }
                     }}
-                    disabled={loading || pageNum === '...'}
+                    disabled={loading || pageNum === "..."}
                     className={cn(
                       "min-w-[40px]",
-                      pageNum === '...' && "cursor-default hover:bg-background"
+                      pageNum === "..." && "cursor-default hover:bg-background"
                     )}
                   >
                     {pageNum}
