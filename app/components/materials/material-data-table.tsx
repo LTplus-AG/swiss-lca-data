@@ -1,16 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  Search,
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowDown,
-  ArrowUp,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -18,132 +6,36 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-import { MaterialsFiltersOptions } from "./materials-filters-options";
 import { clientConfig } from "@/lib/client-config";
+import { cn } from "@/lib/utils";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 
-interface Option {
-  label: string;
-  value: string;
-}
 
-interface MultiSelectProps {
-  options: Option[];
-  value: string[];
-  onChange: (value: string[]) => void;
-  placeholder: string;
-}
-
-const MultiSelect: React.FC<MultiSelectProps> = ({
-  options,
-  value,
-  onChange,
-  placeholder,
-}) => {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-full justify-start">
-          {value.length > 0 ? `${value.length} selected` : placeholder}
-          <SlidersHorizontal className="ml-auto h-4 w-4 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[200px]">
-        {options.map((option) => (
-          <DropdownMenuCheckboxItem
-            key={option.value}
-            checked={value.includes(option.value)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                onChange([...value, option.value]);
-              } else {
-                onChange(value.filter((item: string) => item !== option.value));
-              }
-            }}
-          >
-            {option.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
-
-interface FiltersAndOptionsProps {
-  searchTerm: string;
-  setSearchTerm: (value: string) => void;
-  visibleColumns: string[];
-  toggleColumn: (column: string) => void;
-  columns: Array<{
-    key: string;
-    label: string;
-    description?: string;
-    unit?: string;
-  }>;
-  groupByMaterial: boolean;
-  setGroupByMaterial: (value: boolean) => void;
-  filterOption: string;
-  setFilterOption: (value: string) => void;
-  selectedMaterials: string[];
-  setSelectedMaterials: (value: string[]) => void;
-  materialGroups: string[];
-  selectedIndicators: string[];
-  setSelectedIndicators: (value: string[]) => void;
-  indicatorOptions: Option[];
-  initialMaxValues: Record<string, number>;
-  maxValues: Record<string, number>;
-  updateMaxValues: (indicator: string, value: number) => void;
-}
-
-export const FiltersAndOptions: React.FC<FiltersAndOptionsProps> = ({
-  searchTerm,
-  setSearchTerm,
-  visibleColumns,
-  toggleColumn,
-  columns,
-  groupByMaterial,
-  setGroupByMaterial,
-  filterOption,
-  setFilterOption,
-  selectedMaterials,
-  setSelectedMaterials,
-  materialGroups,
-  selectedIndicators,
-  setSelectedIndicators,
-  indicatorOptions,
-  initialMaxValues,
-  maxValues,
-  updateMaxValues,
-}) => {
-  return (
-    <Card className="mb-8">
-      <CardHeader>
-        <CardTitle>Filters and Options</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Copy the existing filters and options JSX here */}
-        {/* ... */}
-      </CardContent>
-    </Card>
-  );
-};
-
-// Add KBOBMaterial interface
+// KBOBMaterial interface
 interface KBOBMaterial {
   id: string;
   uuid: string;

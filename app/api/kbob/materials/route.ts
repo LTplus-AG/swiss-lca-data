@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 import { MATERIALS_KEY } from "../lib/storage";
+import dotenv from "dotenv";
+dotenv.config();
 
 // Add helper function to attach CORS headers to a response
 function addCorsHeaders(
   response: NextResponse,
   request: Request
 ): NextResponse {
-  const allowedOrigins = [
-    "https://keycloak.fastbim5.eu",
-    "https://host-server.fastbim5.eu",
-  ];
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : [];
   const origin = request.headers.get("origin");
   if (origin && allowedOrigins.includes(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);

@@ -6,16 +6,26 @@ export function middleware(req: Request) {
   // Allow requests from any origin for API routes
   const isApiRoute = new URL(req.url).pathname.startsWith("/api");
   if (isApiRoute) {
-    // Allow all origins for API routes
-    res.headers.set("Access-Control-Allow-Origin", "*");
+    const origin = req.headers.get("Origin");
+    // If there's an Origin header, set it as allowed, otherwise allow all
+    if (origin) {
+      res.headers.set("Access-Control-Allow-Origin", origin);
+    } else {
+      res.headers.set("Access-Control-Allow-Origin", "*");
+    }
+
+    // Add Vary header to handle multiple origins correctly
+    res.headers.set("Vary", "Origin");
+
     res.headers.set(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, DELETE, OPTIONS"
     );
     res.headers.set(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization"
+      "Content-Type, Authorization, Accept"
     );
+    res.headers.set("Access-Control-Allow-Credentials", "true");
     res.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
   } else {
     // For non-API routes, allow from our domains
@@ -26,6 +36,7 @@ export function middleware(req: Request) {
     const origin = req.headers.get("Origin");
     if (origin && allowedOrigins.includes(origin)) {
       res.headers.set("Access-Control-Allow-Origin", origin);
+      res.headers.set("Vary", "Origin");
     }
   }
 
