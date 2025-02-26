@@ -116,6 +116,34 @@ export function MaterialsFiltersOptions({
     },
   ];
 
+  // NEW: Indicator Range Filters state––each indicator is initialized from 0 to its maximum
+  // initialMaxValues is passed by props; fallback to 100 if not provided.
+  const [indicatorFilters, setIndicatorFilters] = useState<
+    Record<string, [number, number]>
+  >(() => {
+    const initial: Record<string, [number, number]> = {};
+    // indicatorOptions contains the list of indicator selections (with id in value)
+    indicatorOptions.forEach((option) => {
+      const maxVal = initialMaxValues[option.value] || 100;
+      initial[option.value] = [0, maxVal];
+    });
+    return initial;
+  });
+
+  // NEW: Handler to update an indicator filter range with debug logging
+  const handleIndicatorFilterChange = (
+    indicatorId: string,
+    range: [number, number]
+  ) => {
+    console.log("Indicator", indicatorId, "range changed to", range);
+    setIndicatorFilters((prev) => {
+      const newFilters = { ...prev, [indicatorId]: range };
+      // Propagate the new indicator filters along with other filters
+      onFiltersChange({ ...filters, indicatorFilters: newFilters });
+      return newFilters;
+    });
+  };
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -340,7 +368,68 @@ export function MaterialsFiltersOptions({
             </PopoverContent>
           </Popover>
         </div>
+
+        {/* NEW: Indicator Range Filters Section */}
+        <div className="mt-4">
+          <Label>Filter by Indicator Ranges</Label>
+          {indicatorOptions.map((option) => (
+            <div key={option.value} className="mb-4 border rounded p-2">
+              <div className="flex justify-between mb-1">
+                <span>{option.label}</span>
+                <span>
+                  {indicatorFilters[option.value][0]} -{" "}
+                  {indicatorFilters[option.value][1]}
+                </span>
+              </div>
+              <div className="flex space-x-2 items-center">
+                <Input
+                  type="number"
+                  className="w-20"
+                  value={indicatorFilters[option.value][0]}
+                  onChange={(e) => {
+                    const newLower = Number(e.target.value);
+                    handleIndicatorFilterChange(option.value, [
+                      newLower,
+                      indicatorFilters[option.value][1],
+                    ]);
+                  }}
+                />
+                <Slider
+                  min={0}
+                  max={initialMaxValues[option.value] || 100}
+                  step={1}
+                  value={indicatorFilters[option.value]}
+                  onValueChange={(val) =>
+                    handleIndicatorFilterChange(option.value, [val[0], val[1]])
+                  }
+                />
+                <Input
+                  type="number"
+                  className="w-20"
+                  value={indicatorFilters[option.value][1]}
+                  onChange={(e) => {
+                    const newUpper = Number(e.target.value);
+                    handleIndicatorFilterChange(option.value, [
+                      indicatorFilters[option.value][0],
+                      newUpper,
+                    ]);
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
+}
+
+// Assume indicatorOptions and initialMaxValues are passed to this component via props or context.
+interface Option {
+  label: string;
+  value: string;
+}
+interface MaterialsFiltersOptionsProps extends FiltersProps {
+  indicatorOptions: Option[];
+  initialMaxValues: Record<string, number>;
 }

@@ -22,8 +22,7 @@ export async function POST(request: Request) {
     console.log('Add version endpoint called');
     // Verify API key
     const apiKey = request.headers.get('x-api-key');
-    console.log('API Key received:', apiKey);
-    console.log('Valid API keys:', process.env.API_KEYS?.split(","));
+
     
     if (!apiKey || !process.env.API_KEYS?.split(",").includes(apiKey)) {
       console.log('API key validation failed');

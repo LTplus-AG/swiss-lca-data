@@ -40,3 +40,9 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# ngrok
+ngrok.txt
+
+# downloads
+downloads/*
