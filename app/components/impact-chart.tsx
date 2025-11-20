@@ -92,6 +92,7 @@ interface ImpactChartProps {
   selectedMaterials: string[];
   selectedVersions: string[];
   selectedImpact: string;
+  selectedImpactLabel?: string; // Add optional label prop
   materials: Array<{ id: string; nameDE: string }>;
   impactCategories: Array<{ value: string; label: string }>;
   loading: boolean;
@@ -102,14 +103,17 @@ export function ImpactChart({
   selectedMaterials,
   selectedVersions,
   selectedImpact,
+  selectedImpactLabel,
   materials,
   impactCategories,
   loading,
 }: ImpactChartProps) {
   const isSingleVersion = selectedVersions.length === 1;
-  const selectedIndicator = impactCategories.find(
-    (cat) => cat.value === selectedImpact
-  );
+
+  // Use provided label first, then fall back to finding in impactCategories, then use raw ID
+  const resolvedLabel = selectedImpactLabel ||
+    impactCategories.find((cat) => cat.value === selectedImpact)?.label ||
+    selectedImpact;
 
   if (loading) {
     return (
@@ -170,7 +174,7 @@ export function ImpactChart({
               isSingleVersion
                 ? {
                   [selectedImpact]: {
-                    label: selectedIndicator?.label || selectedImpact,
+                    label: resolvedLabel,
                     color: "hsl(221, 83%, 53%)",
                   },
                 }
@@ -195,7 +199,7 @@ export function ImpactChart({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
-                margin={{ top: 20, right: 20, left: 20, bottom: 70 }}
+                margin={{ top: 20, right: 20, left: 60, bottom: 70 }}
                 barSize={isSingleVersion ? 80 : Math.max(30, 400 / selectedMaterials.length)}
                 barGap={4}
                 barCategoryGap="10%"
@@ -211,9 +215,9 @@ export function ImpactChart({
                 />
                 <YAxis
                   label={{
-                    value: selectedIndicator?.label || "",
+                    value: resolvedLabel,
                     angle: -90,
-                    position: "insideLeft",
+                    position: "left",
                     style: {
                       textAnchor: "middle",
                       fill: "hsl(var(--foreground))",
@@ -251,7 +255,7 @@ export function ImpactChart({
                               }
                               displayName = dataKey; // Material name
                             } else {
-                              displayName = selectedIndicator?.label || dataKey;
+                              displayName = resolvedLabel;
                             }
 
                             const color = getColorValueForIndex(materialIndex);
@@ -276,7 +280,7 @@ export function ImpactChart({
                   <Bar
                     dataKey={selectedImpact}
                     fill="hsl(221, 83%, 53%)"
-                    name={selectedIndicator?.label}
+                    name={resolvedLabel}
                     radius={[4, 4, 0, 0]}
                   />
                 ) : (

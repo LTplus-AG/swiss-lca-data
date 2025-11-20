@@ -48,7 +48,7 @@ function parseNumber(value) {
 }
 
 function parseDensity(value) {
-  if (!value || value === "-") return { raw: null, min: null, max: null };
+  if (value === undefined || value === null || value === "" || value === "-") return { raw: null, min: null, max: null };
   const str = String(value).trim();
   const match = str.match(/^([\d\s']+)\s*-\s*([\d\s']+)$/);
   if (match) {
@@ -123,11 +123,10 @@ async function verifyBlobAccess(key) {
     const blob = blobs.find(b => b.pathname === cleanKey);
     if (!blob) throw new Error("Blob not found in list");
     
-    const res = await fetch(blob.url);
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    const response = await axios.get(blob.url);
+    if (response.status !== 200) throw new Error(`Request failed: ${response.status} ${response.statusText}`);
     
-    const text = await res.text();
-    const data = JSON.parse(text);
+    const data = response.data;
     console.log(`✅ Verification successful: Read ${data.length} items from blob.`);
     return true;
   } catch (e) {

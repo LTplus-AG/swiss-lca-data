@@ -48,7 +48,7 @@ function parseNumber(value) {
 }
 
 function parseDensity(value) {
-  if (!value || value === "-") return { raw: null, min: null, max: null };
+  if (value === undefined || value === null || value === "" || value === "-") return { raw: null, min: null, max: null };
   const str = String(value).trim();
   const match = str.match(/^([\d\s']+)\s*-\s*([\d\s']+)$/);
   if (match) {

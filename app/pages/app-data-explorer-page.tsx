@@ -537,6 +537,30 @@ export default function DataExplorerPage() {
     return availableIndicators.filter(ind => ind.isAvailableInAny);
   }, [availableIndicators]);
 
+  // Helper function to resolve impact label from API indicators first, then fall back to hardcoded categories
+  const getImpactLabel = useCallback((impactId: string): string => {
+    // First try to find in filteredIndicators (indicators available in selected versions)
+    const indicatorFromFiltered = filteredIndicators.find(ind => ind.id === impactId);
+    if (indicatorFromFiltered) {
+      return indicatorFromFiltered.label;
+    }
+
+    // Fall back to all indicators (even if not available in selected versions)
+    const indicatorFromAll = indicators.find(ind => ind.id === impactId);
+    if (indicatorFromAll) {
+      return indicatorFromAll.label;
+    }
+
+    // Fall back to hardcoded impactCategories for backward compatibility
+    const legacyCategory = impactCategories.find(cat => cat.value === impactId);
+    if (legacyCategory) {
+      return legacyCategory.label;
+    }
+
+    // Final fallback: return the raw impact ID
+    return impactId;
+  }, [filteredIndicators, indicators]);
+
   // Auto-switch to available indicator if current one becomes unavailable
   useEffect(() => {
     if (selectedImpact && filteredIndicators.length > 0) {
@@ -915,6 +939,7 @@ export default function DataExplorerPage() {
             selectedMaterials={selectedMaterials}
             selectedVersions={selectedVersions}
             selectedImpact={selectedImpact}
+            selectedImpactLabel={getImpactLabel(selectedImpact)}
             materials={materials}
             impactCategories={impactCategories}
             loading={loading}
@@ -937,10 +962,7 @@ export default function DataExplorerPage() {
                   </th>
                   {selectedVersions.length === 1 ? (
                     <th className="text-left p-2">
-                      {
-                        impactCategories.find((c) => c.value === selectedImpact)
-                          ?.label
-                      }
+                      {getImpactLabel(selectedImpact)}
                     </th>
                   ) : (
                     selectedMaterials.map((materialId) => {

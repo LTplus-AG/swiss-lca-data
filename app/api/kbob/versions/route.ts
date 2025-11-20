@@ -4,7 +4,7 @@ import {
   KBOB_VERSIONS_KEY, 
   KBOB_CURRENT_VERSION_KEY, 
   KBOB_PENDING_VERSION_KEY 
-} from "@/api/kbob/lib/storage";
+} from "../lib/storage";
 
 export const dynamic = 'force-dynamic';
 

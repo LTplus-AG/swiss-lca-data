@@ -89,6 +89,7 @@ export async function GET(request: Request) {
     if (!materials || (Array.isArray(materials) && materials.length === 0)) {
       return NextResponse.json({
         success: true,
+        version: dataVersion,
         materials: [],
         count: 0,
       });
