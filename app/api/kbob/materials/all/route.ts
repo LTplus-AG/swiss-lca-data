@@ -7,6 +7,8 @@ interface KBOBMaterial {
   nameDE: string;
   nameFR: string;
   density: string;
+  densityMin: number | null;
+  densityMax: number | null;
   unit: string;
   ubp21Total: number | null;
   ubp21Production: number | null;

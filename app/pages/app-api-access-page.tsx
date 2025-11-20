@@ -111,6 +111,11 @@ const API_ENDPOINTS = [
         min: 1,
         max: 10,
       },
+      {
+        name: "version",
+        type: "string",
+        description: "Optional: KBOB data version (e.g., '7.0'). Defaults to current version.",
+      },
     ],
   },
   {
@@ -133,6 +138,11 @@ const API_ENDPOINTS = [
           { label: "French", value: "fr" },
         ],
       },
+      {
+        name: "version",
+        type: "string",
+        description: "Optional: KBOB data version (e.g., '7.0'). Defaults to current version.",
+      },
     ],
   },
   {
@@ -150,6 +160,11 @@ const API_ENDPOINTS = [
           { label: "French", value: "fr" },
         ],
       },
+      {
+        name: "version",
+        type: "string",
+        description: "Optional: KBOB data version (e.g., '7.0'). Defaults to current version.",
+      },
     ],
   },
   {
@@ -157,14 +172,27 @@ const API_ENDPOINTS = [
     method: "GET",
     endpoint: "/api/kbob/materials/{uuid}",
     description: "Get detailed information about a specific material",
-    params: [{ name: "uuid", type: "string", description: "Material UUID" }],
+    params: [
+      { name: "uuid", type: "string", description: "Material UUID" },
+      {
+        name: "version",
+        type: "string",
+        description: "Optional: KBOB data version (e.g., '7.0'). Defaults to current version.",
+      },
+    ],
   },
   {
     name: "Get Available Units",
     method: "GET",
     endpoint: "/api/kbob/materials/units",
     description: "Get all available measurement units and their usage counts",
-    params: [], // No parameters needed
+    params: [
+      {
+        name: "version",
+        type: "string",
+        description: "Optional: KBOB data version (e.g., '7.0'). Defaults to current version.",
+      },
+    ],
   },
   {
     name: "Compare Materials",
@@ -192,6 +220,11 @@ const API_ENDPOINTS = [
           { label: "German", value: "de" },
           { label: "French", value: "fr" },
         ],
+      },
+      {
+        name: "version",
+        type: "string",
+        description: "Optional: KBOB data version (e.g., '7.0'). Defaults to current version.",
       },
     ],
   },
@@ -387,6 +420,11 @@ const DOCUMENTATION_SECTIONS = {
           "The API returns standard HTTP status codes along with error messages in the response body.",
       },
       {
+        title: "Versioning",
+        content:
+          "API responses include a 'version' field in the metadata indicating which KBOB data version is being returned. You can request a specific version using the 'version' query parameter (e.g. ?version=7.0).",
+      },
+      {
         title: "API Key Management",
         content: "Revoked keys cannot be used for authentication.",
       },
@@ -396,13 +434,18 @@ const DOCUMENTATION_SECTIONS = {
     overview:
       "Returns the complete list of materials from the KBOB database with all their properties and environmental impact data.",
     usage: `This endpoint provides access to the full KBOB materials database. 
-    No parameters are required. Consider using pagination in your application 
-    when displaying the results, as the response contains all materials (200+ entries).`,
+    You can optionally specify a 'version' query parameter (e.g. ?version=7.0) to fetch a specific data version. 
+    Consider using pagination in your application when displaying the results.`,
     responseFields: [
       {
         name: "success",
         type: "boolean",
         description: "Operation status indicator",
+      },
+      {
+        name: "version",
+        type: "string",
+        description: "The version of the KBOB data returned (e.g. '7.0')",
       },
       {
         name: "materials",
@@ -802,10 +845,59 @@ export default function ApiAccessPage() {
   const [materials, setMaterials] = useState<
     Array<{ uuid: string; name: string }>
   >([]);
+  const [versions, setVersions] = useState<Array<{ label: string; value: string }>>([]);
   const [apiCallStatus, setApiCallStatus] = useState<{
     status: "idle" | "success" | "error";
     message?: string;
   }>({ status: "idle" });
+
+  // Add useEffect to fetch available versions
+  useEffect(() => {
+    const fetchVersions = async () => {
+      try {
+        const response = await fetch("/api/kbob/versions");
+        const data = await response.json();
+        if (data.versions) {
+          const versionOptions = [
+            { label: "Current Version", value: "current" },
+            ...data.versions.map((v: any) => ({
+              label: `v${v.version} (${new Date(v.publishDate || v.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`,
+              value: v.version
+            }))
+          ];
+          setVersions(versionOptions);
+        }
+      } catch (error) {
+        console.error("Failed to fetch versions:", error);
+      }
+    };
+    fetchVersions();
+  }, []);
+
+  // Memoize endpoints with versions populated
+  const endpointsWithVersions = useMemo(() => {
+    return API_ENDPOINTS.map(endpoint => ({
+      ...endpoint,
+      params: endpoint.params?.map(param => {
+        if (param.name === "version") {
+          return {
+            ...param,
+            type: "select",
+            options: versions.length > 0 ? versions : [{ label: "Current Version", value: "current" }]
+          };
+        }
+        return param;
+      })
+    }));
+  }, [versions]);
+
+  // Update selected endpoint when endpointsWithVersions changes
+  useEffect(() => {
+    const current = endpointsWithVersions.find(e => e.name === selectedEndpoint.name);
+    if (current) {
+      setSelectedEndpoint(current);
+    }
+  }, [endpointsWithVersions]);
 
   // Add useEffect to set initial random count
   useEffect(() => {
@@ -817,7 +909,7 @@ export default function ApiAccessPage() {
   }, []); // Empty dependency array means this runs once after mount
 
   const handleEndpointChange = (value: string) => {
-    const endpoint = API_ENDPOINTS.find((e) => e.name === value);
+    const endpoint = endpointsWithVersions.find((e) => e.name === value);
     if (endpoint) {
       setSelectedEndpoint(endpoint);
       setParams({});
@@ -875,14 +967,19 @@ fetch('${fullUrl}', {
         (_, p) => params[p] || `{${p}}`
       );
 
+      // Check for missing path parameters
+      if (url.includes("{") && url.includes("}")) {
+        const missingParam = url.match(/{(\w+)}/)?.[1];
+        throw new Error(`Please fill in the required parameter: ${missingParam}`);
+      }
+
       const queryParams = selectedEndpoint.params
         .filter((p) => !url.includes(`{${p.name}}`) && params[p.name])
         .map((p) => `${p.name}=${encodeURIComponent(params[p.name])}`)
         .join("&");
 
-      const fullUrl = `${window.location.origin}${url}${
-        queryParams ? `?${queryParams}` : ""
-      }`;
+      const fullUrl = `${window.location.origin}${url}${queryParams ? `?${queryParams}` : ""
+        }`;
 
       // Get the first API key from Next.js env config
       const apiKey = process.env.API_KEYS?.split(",")[0];
@@ -939,7 +1036,8 @@ fetch('${fullUrl}', {
   // Update the fetchRandomUUID function to get multiple unique UUIDs
   const fetchRandomUUIDs = async (count: number = 2) => {
     try {
-      const response = await fetch("/api/kbob/materials");
+      const versionParam = params.version ? `?version=${params.version}` : "";
+      const response = await fetch(`/api/kbob/materials${versionParam}`);
       const data = await response.json();
       if (data.success && data.materials.length >= count) {
         // Get 'count' number of different materials
@@ -1199,7 +1297,7 @@ fetch('${fullUrl}', {
                     <SelectValue placeholder="Select an endpoint" />
                   </SelectTrigger>
                   <SelectContent>
-                    {API_ENDPOINTS.map((endpoint) => (
+                    {endpointsWithVersions.map((endpoint) => (
                       <SelectItem key={endpoint.name} value={endpoint.name}>
                         {endpoint.name}
                       </SelectItem>
@@ -1445,7 +1543,7 @@ fetch('${fullUrl}', {
                             {(() => {
                               const section =
                                 DOCUMENTATION_SECTIONS[
-                                  endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
+                                endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
                                 ];
                               return "overview" in section && section.overview // Type guard for overview
                                 ? section.overview
@@ -1514,7 +1612,7 @@ fetch('${fullUrl}', {
                               <code className="text-sm">
                                 {
                                   RESPONSE_EXAMPLES[
-                                    endpoint.name as keyof typeof RESPONSE_EXAMPLES
+                                  endpoint.name as keyof typeof RESPONSE_EXAMPLES
                                   ]
                                 }
                               </code>
@@ -1550,17 +1648,17 @@ fetch('${fullUrl}', {
                         {DOCUMENTATION_SECTIONS[
                           endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
                         ]?.usage && (
-                          <div>
-                            <h4 className="font-semibold mb-2">Usage Notes</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {
-                                DOCUMENTATION_SECTIONS[
-                                  endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
-                                ].usage
-                              }
-                            </p>
-                          </div>
-                        )}
+                            <div>
+                              <h4 className="font-semibold mb-2">Usage Notes</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {
+                                  DOCUMENTATION_SECTIONS[
+                                    endpoint.name as keyof typeof DOCUMENTATION_SECTIONS
+                                  ].usage
+                                }
+                              </p>
+                            </div>
+                          )}
                       </div>
                     </AccordionContent>
                   </AccordionItem>

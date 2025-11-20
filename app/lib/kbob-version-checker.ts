@@ -5,7 +5,7 @@ import { kv } from '@vercel/kv';
 import { sendSlackNotification, formatKBOBUpdateMessage } from './slack-notifier';
 import puppeteer from 'puppeteer';
 
-const KBOB_VERSION_KEY = 'kbob/latest_version';
+import { KBOB_CURRENT_VERSION_KEY } from '@/api/kbob/lib/storage';
 const KBOB_BASE_URL = 'https://www.kbob.admin.ch/de/oekobilanzdaten-im-baubereich';
 const BACKEND_URL_PATTERN = 'backend.kbob.admin.ch/fileservice/sdweb-docs-prod-kbobadminch-files/files';
 
@@ -112,10 +112,10 @@ export async function checkForNewVersion(isTest: boolean = false): Promise<{ has
     console.log('Version info:', versionInfo);
 
     // Check if this version is different from the stored version
-    const storedVersion = await kv.get<KBOBVersionInfo>(KBOB_VERSION_KEY);
-    console.log('Stored version:', storedVersion);
+    const currentVersion = await kv.get<string>(KBOB_CURRENT_VERSION_KEY);
+    console.log('Stored version:', currentVersion);
 
-    if (!storedVersion || storedVersion.version !== versionInfo.version) {
+    if (!currentVersion || currentVersion !== versionInfo.version) {
       return { hasNewVersion: true, versionInfo };
     }
 
@@ -158,10 +158,7 @@ export async function downloadAndProcessNewVersion(versionInfo: KBOBVersionInfo)
     const materials = processExcelData(workbook);
 
     // Save to database
-    await saveMaterialsToDB(materials);
-
-    // Store the new version info
-    await kv.set(KBOB_VERSION_KEY, versionInfo);
+    await saveMaterialsToDB(materials, versionInfo.version);
 
     // Send Slack notification
     const message = formatKBOBUpdateMessage(

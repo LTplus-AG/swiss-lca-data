@@ -4,12 +4,13 @@ import { put } from "@vercel/blob";
 import * as XLSX from "xlsx";
 import axios from "axios";
 import { processExcelData, saveMaterialsToDB } from "@/lib/kbob-service";
-import { MATERIALS_KEY, LAST_INGESTION_KEY } from "@/api/kbob/lib/storage";
-
-// Constants for versioning
-const KBOB_VERSIONS_KEY = "kbob/versions";
-const KBOB_CURRENT_VERSION_KEY = "kbob/current_version";
-const KBOB_PENDING_VERSION_KEY = "kbob/pending_version";
+import {
+  MATERIALS_KEY,
+  LAST_INGESTION_KEY,
+  KBOB_VERSIONS_KEY,
+  KBOB_CURRENT_VERSION_KEY,
+  KBOB_PENDING_VERSION_KEY
+} from "@/api/kbob/lib/storage";
 
 // Slack notification helper
 async function sendSlackNotification(message: string) {
@@ -39,7 +40,7 @@ async function ingestApprovedVersion(pendingVersion: any) {
     }
 
     // Save materials to database
-    await saveMaterialsToDB(materials);
+    await saveMaterialsToDB(materials, pendingVersion.version);
 
     // Update version information
     const timestamp = new Date().toISOString();
@@ -119,10 +120,8 @@ export async function POST(request: Request) {
 
       // Send notification
       await sendSlackNotification(
-        `✅ KBOB data version ${
-          pendingVersion.version
-        } has been approved and ingested successfully!\n• ${
-          pendingVersion.materialsCount
+        `✅ KBOB data version ${pendingVersion.version
+        } has been approved and ingested successfully!\n• ${pendingVersion.materialsCount
         } materials processed\n• Timestamp: ${new Date().toISOString()}`
       );
 
@@ -151,8 +150,7 @@ export async function POST(request: Request) {
 
     // Send error notification
     await sendSlackNotification(
-      `❌ Error processing KBOB version approval/rejection: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `❌ Error processing KBOB version approval/rejection: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
 
