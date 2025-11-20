@@ -31,8 +31,16 @@ import {
   ArrowUpDown,
   Search,
   SlidersHorizontal,
+  History,
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 // KBOBMaterial interface
@@ -103,6 +111,26 @@ export function MaterialsTableComponent() {
 
   // Add state for indicators
   const [indicators, setIndicators] = useState<Indicator[]>([]);
+  
+  // Add state for versions
+  const [selectedVersion, setSelectedVersion] = useState<string>("current");
+  const [availableVersions, setAvailableVersions] = useState<any[]>([]);
+
+  // Fetch versions on mount
+  useEffect(() => {
+    const fetchVersions = async () => {
+      try {
+        const res = await fetch("/api/kbob/versions");
+        const data = await res.json();
+        if (data.success && data.versions) {
+          setAvailableVersions(data.versions);
+        }
+      } catch (e) {
+        console.error("Failed to fetch versions", e);
+      }
+    };
+    fetchVersions();
+  }, []);
 
   // Add useEffect to fetch indicators
   useEffect(() => {
@@ -197,8 +225,10 @@ export function MaterialsTableComponent() {
       setLoading(true);
       const pageSizeParam = pageSize === "All" ? "all" : pageSize;
       const searchQuery = searchTerm ? `&search=${searchTerm}` : "";
+      const versionParam = selectedVersion && selectedVersion !== "current" ? `&version=${selectedVersion}` : "";
+      
       const response = await fetch(
-        `/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}${searchQuery}`,
+        `/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}${searchQuery}${versionParam}`,
         {
           headers: {
             Authorization: `Bearer ${clientConfig.API_KEY}`,
@@ -227,7 +257,7 @@ export function MaterialsTableComponent() {
   // Update useEffect to use the new fetch function
   useEffect(() => {
     fetchMaterials(page);
-  }, [page, searchTerm, pageSize]);
+  }, [page, searchTerm, pageSize, selectedVersion]);
 
   // Add pagination range function
   const getPaginationRange = (currentPage: number, totalPages: number) => {
@@ -508,7 +538,33 @@ export function MaterialsTableComponent() {
     <div className="container mx-auto py-8">
       <Card>
         <CardHeader>
-          <CardTitle>KBOB Materials</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>KBOB Materials</CardTitle>
+            <div className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select Version" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current Version</SelectItem>
+                  {availableVersions.map((v) => {
+                    const date = new Date(v.publishDate || v.date);
+                    const day = date.getDate();
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const month = monthNames[date.getMonth()];
+                    const year = date.getFullYear();
+                    const formattedDate = `${day} ${month} ${year}`;
+                    return (
+                      <SelectItem key={v.version} value={v.version}>
+                        {v.version} ({formattedDate})
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Card className="mb-8">
@@ -885,12 +941,104 @@ export function MaterialsTableComponent() {
   );
 }
 
-// Add helper function to format cell values
+// Helper function to detect if user is in EU region
+function detectEULocale(): string {
+  if (typeof navigator === "undefined") {
+    // Default to EU locale (Swiss/German) for server-side rendering
+    return "de-CH";
+  }
+  
+  const browserLocale = navigator.language || navigator.languages?.[0] || "en";
+  const localeLower = browserLocale.toLowerCase();
+  
+  // EU language codes
+  const euLanguages = ["de", "fr", "it", "es", "pt", "nl", "pl", "cs", "sk", "sl", "hu", "ro", "bg", "hr", "el", "fi", "sv", "da", "et", "lv", "lt", "mt"];
+  
+  // Check if browser locale starts with EU language code
+  const isEULocale = euLanguages.some(lang => localeLower.startsWith(lang.toLowerCase()));
+  
+  // Also check timezone as fallback (EU timezones)
+  let isEUTimezone = false;
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const euTimezones = ["Europe/", "Africa/Casablanca", "Africa/Algiers", "Africa/Tunis"];
+    isEUTimezone = euTimezones.some(tz => timezone.includes(tz));
+  } catch (e) {
+    // Ignore timezone detection errors
+  }
+  
+  // If EU language detected, use it
+  if (isEULocale) {
+    // Use the browser locale if it's EU, or default to de-CH for Swiss context
+    if (browserLocale.includes("CH") || browserLocale.includes("ch")) {
+      return browserLocale;
+    }
+    // For other EU locales, use the language code with CH for Swiss context
+    const langCode = browserLocale.split("-")[0];
+    return langCode + "-CH";
+  }
+  
+  // If timezone suggests EU but language doesn't, default to EU formatting
+  if (isEUTimezone) {
+    return "de-CH"; // Default to Swiss/German formatting
+  }
+  
+  // Check if locale is explicitly US/Canada (must be explicit, not just "en")
+  if (localeLower === "en-us" || localeLower === "en-ca" || localeLower.startsWith("en-us") || localeLower.startsWith("en-ca")) {
+    return "en-US";
+  }
+  
+  // If just "en" without country code, check timezone or default to EU for Swiss app
+  if (localeLower === "en" || localeLower.startsWith("en-")) {
+    // If timezone suggests EU, use EU formatting
+    if (isEUTimezone) {
+      return "de-CH";
+    }
+    // Otherwise, if it's explicitly en-GB or other non-US English, use EU formatting
+    if (localeLower.includes("gb") || localeLower.includes("ie") || localeLower.includes("au") || localeLower.includes("nz")) {
+      return "en-GB"; // UK uses EU-style formatting (space/comma)
+    }
+    // Default to EU for Swiss app context
+    return "de-CH";
+  }
+  
+  // Default to EU (Swiss) formatting since this is a Swiss LCA app
+  return "de-CH";
+}
+
+// Add helper function to format cell values with locale-aware formatting
 function formatCellValue(value: any): string {
   if (value === null || value === undefined) return "-";
   if (typeof value === "number") {
-    // Format numbers with 2 decimal places if they have decimals
-    return Number.isInteger(value) ? value.toString() : value.toFixed(2);
+    // Detect user's locale - prefer EU formatting for Swiss LCA app
+    const locale = detectEULocale();
+    
+    // For numbers >= 1000, show no decimal places with thousand separators
+    if (Math.abs(value) >= 1000) {
+      return new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+      }).format(Math.round(value));
+    }
+    
+    // Check if the number is effectively a whole number (all decimals are zeros)
+    const roundedToZero = Math.round(value);
+    const isWholeNumber = Math.abs(value - roundedToZero) < 0.0001;
+    
+    // If it's a whole number, format without decimals
+    if (isWholeNumber) {
+      return new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+      }).format(roundedToZero);
+    }
+    
+    // For numbers < 1000 with decimals, show up to 3 decimal places, remove trailing zeros
+    // Intl.NumberFormat with minimumFractionDigits: 0 automatically removes trailing zeros
+    return new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 3,
+      minimumFractionDigits: 0,
+    }).format(value);
   }
   return value.toString();
 }

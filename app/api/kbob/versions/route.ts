@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import { 
+  KBOB_VERSIONS_KEY, 
+  KBOB_CURRENT_VERSION_KEY, 
+  KBOB_PENDING_VERSION_KEY 
+} from "@/api/kbob/lib/storage";
 
-// Constants for versioning
-const KBOB_VERSIONS_KEY = "kbob/versions";
-const KBOB_CURRENT_VERSION_KEY = "kbob/current_version";
-const KBOB_PENDING_VERSION_KEY = "kbob/pending_version";
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {

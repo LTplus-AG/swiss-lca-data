@@ -46,3 +46,4 @@ ngrok.txt
 
 # downloads
 downloads/*
+.env*.local

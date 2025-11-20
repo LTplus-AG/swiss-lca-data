@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
-import { MATERIALS_KEY } from "../lib/storage";
+import {
+  MATERIALS_KEY,
+  getMaterialVersionKey,
+  getBlobContent,
+  KBOB_VERSIONS_KEY,
+  KBOB_CURRENT_VERSION_KEY
+} from "../lib/storage";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -38,6 +44,8 @@ interface KBOBMaterial {
   nameDE: string;
   nameFR: string;
   density: string;
+  densityMin: number | null;
+  densityMax: number | null;
   unit: string;
   ubp21Total: number | null;
   ubp21Production: number | null;
@@ -74,23 +82,74 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const search = searchParams.get("search") || "";
     const pageSizeParam = searchParams.get("pageSize");
+    const version = searchParams.get("version");
 
     // Handle 'all' page size or use default/max limits
     const pageSize =
       pageSizeParam === "all"
         ? Number.MAX_SAFE_INTEGER
         : Math.min(
-            parseInt(pageSizeParam || String(DEFAULT_PAGE_SIZE), 10),
-            MAX_PAGE_SIZE
-          );
+          parseInt(pageSizeParam || String(DEFAULT_PAGE_SIZE), 10),
+          MAX_PAGE_SIZE
+        );
 
-    // Get all materials from KV store
-    const materials = await kv.get<KBOBMaterial[]>(MATERIALS_KEY);
+    // Get materials based on version
+    let materials: KBOBMaterial[] | null = null;
+    let dataVersion = version || "current";
+
+    if (version && version !== "current") {
+      const blobContent = await getBlobContent(getMaterialVersionKey(version));
+      if (blobContent) {
+        try {
+          materials = JSON.parse(blobContent);
+        } catch (e) {
+          console.error("Error parsing versioned materials:", e);
+        }
+      }
+    } else {
+      // If current, try to get the explicit version number
+      const currentVersion = await kv.get<string>(KBOB_CURRENT_VERSION_KEY);
+      if (currentVersion) {
+        dataVersion = currentVersion;
+      }
+
+      materials = await kv.get<KBOBMaterial[]>(MATERIALS_KEY);
+
+      // Fallback: If KV is empty or null, try to get 'current' from versions list
+      if (!materials || (Array.isArray(materials) && materials.length === 0)) {
+        console.log("MATERIALS_KEY empty, checking versions list for fallback");
+        const versions = await kv.get<any[]>(KBOB_VERSIONS_KEY);
+
+        if (versions && versions.length > 0) {
+          // Sort by date desc to find latest
+          const sortedVersions = [...versions].sort((a, b) => {
+            const dateA = new Date(a.date || 0).getTime();
+            const dateB = new Date(b.date || 0).getTime();
+            return dateB - dateA;
+          });
+
+          const latest = sortedVersions[0];
+          if (latest) {
+            console.log(`Falling back to latest version: ${latest.version}`);
+            dataVersion = latest.version;
+            const blobContent = await getBlobContent(getMaterialVersionKey(latest.version));
+            if (blobContent) {
+              try {
+                materials = JSON.parse(blobContent);
+              } catch (e) {
+                console.error("Error parsing fallback version materials:", e);
+              }
+            }
+          }
+        }
+      }
+    }
 
     if (!materials) {
       return addCorsHeaders(
         NextResponse.json({
           success: true,
+          version: dataVersion,
           materials: [],
           count: 0,
           totalMaterials: 0,
@@ -125,6 +184,7 @@ export async function GET(request: Request) {
     return addCorsHeaders(
       NextResponse.json({
         success: true,
+        version: dataVersion,
         materials: paginatedMaterials,
         count: paginatedMaterials.length,
         totalMaterials,

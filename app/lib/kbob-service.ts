@@ -5,6 +5,9 @@ import { put } from "@vercel/blob";
 import {
   getBlobContent,
   MATERIALS_KEY,
+  KBOB_VERSIONS_KEY,
+  KBOB_CURRENT_VERSION_KEY,
+  getMaterialVersionKey,
   LAST_INGESTION_KEY,
   storeBlobContent,
 } from "@/api/kbob/lib/storage";
@@ -122,7 +125,9 @@ interface KBOBMaterial {
   group?: string;
   nameDE: string;
   nameFR: string;
-  density: string | null;
+  density: string | null; // Kept as string to preserve ranges like "1200-2000"
+  densityMin: number | null; // Parsed minimum density from range
+  densityMax: number | null; // Parsed maximum density from range
   unit: string;
   ubp21Total: number | null;
   ubp21Production: number | null;
@@ -165,12 +170,14 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
   const sheet = workbook.Sheets[sheetName];
 
   // Set Excel reading options
+  // Use raw: true to get actual numeric values instead of formatted strings
+  // cellNF: false ensures we get raw numbers, not formatted text
   const options = {
     header: 1,
     raw: true,
     blankrows: false,
     cellDates: true,
-    cellNF: true,
+    cellNF: false, // Changed from true to false to ensure raw numeric values
     cellText: false
   };
 
@@ -253,6 +260,9 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
     }
 
     try {
+      // Parse density with range support
+      const densityParsed = parseDensity(row[COLUMN_MAPPING.DENSITY]);
+
       const material: KBOBMaterial = {
         id,
         uuid,
@@ -261,7 +271,9 @@ export function processExcelData(workbook: XLSX.WorkBook): KBOBMaterial[] {
         disposalId: String(row[COLUMN_MAPPING.DISPOSAL_ID] || ""),
         disposalNameDE: String(row[COLUMN_MAPPING.DISPOSAL_NAME_DE] || ""),
         disposalNameFR: String(row[COLUMN_MAPPING.DISPOSAL_NAME_FR] || ""),
-        density: String(row[COLUMN_MAPPING.DENSITY] || null),
+        density: densityParsed.raw,
+        densityMin: densityParsed.min,
+        densityMax: densityParsed.max,
         unit: String(row[COLUMN_MAPPING.UNIT] || ""),
         ubp21Total: parseNumber(row[COLUMN_MAPPING.UBP_TOTAL]),
         ubp21Production: parseNumber(row[COLUMN_MAPPING.UBP_PRODUCTION]),
@@ -344,19 +356,94 @@ function parseNumber(value: any): number | null {
   // If it's already a number, return it
   if (typeof value === 'number') return value;
 
-  // Convert to string and clean up the value
-  const cleanValue = value
-    .toString()
-    .replace(/'/g, "") // Remove thousand separators
-    .replace(/,/g, ".") // Replace comma with decimal point
-    .replace(/\s+/g, "") // Remove whitespace
-    .replace(/[^\d.-]/g, "") // Remove any non-numeric characters except decimal and minus
-    .trim();
+  // Convert to string for processing
+  const strValue = value.toString().trim();
 
-  if (cleanValue === "") return null;
+  if (strValue === "" || strValue === "-") return null;
+
+  // Handle Swiss number formats:
+  // - Thousands separator: space or apostrophe (e.g., "1 510,00" or "1'510.00")
+  // - Decimal separator: comma (e.g., "1,51" or "1 510,00")
+  // - Range values (e.g., "1200-2000") should return null
+
+  // Check if it's a range (contains dash between numbers, no comma)
+  // Pattern: digits-dash-digits (e.g., "1200-2000")
+  if (/^\d+-\d+$/.test(strValue.replace(/\s/g, ''))) {
+    return null;
+  }
+
+  // Remove thousand separators (space, apostrophe) first
+  // These are always thousands separators in Swiss format
+  let cleanValue = strValue
+    .replace(/\s+/g, "") // Remove whitespace (thousands separator)
+    .replace(/'/g, ""); // Remove apostrophe (thousands separator)
+
+  // Now handle comma: determine if it's thousands or decimal separator
+  // Rule: If comma is followed by exactly 3 digits (and no more digits after),
+  //       it's likely a thousands separator (e.g., "73,400")
+  //       Otherwise, it's a decimal separator (e.g., "1,51" or "1510,00")
+  const commaIndex = cleanValue.indexOf(',');
+  if (commaIndex !== -1) {
+    const afterComma = cleanValue.substring(commaIndex + 1);
+    // Check if comma is followed by exactly 3 digits and then end or non-digit
+    // This indicates thousands separator (e.g., "73,400" or "1,234.56")
+    const match = afterComma.match(/^(\d{3})([^\d]|$)/);
+    if (match && match[1].length === 3) {
+      // Thousands separator: remove the comma
+      cleanValue = cleanValue.replace(/,/g, "");
+    } else {
+      // Decimal separator: replace comma with dot
+      cleanValue = cleanValue.replace(/,/g, ".");
+    }
+  }
+
+  // Remove any remaining non-numeric characters except decimal point and minus
+  // IMPORTANT: .replace() returns a new string, must assign it back
+  cleanValue = cleanValue.replace(/[^\d.-]/g, "");
+
+  if (cleanValue === "" || cleanValue === "-") return null;
 
   const num = Number(cleanValue);
   return isNaN(num) ? null : num;
+}
+
+/**
+ * Parse density value which can be:
+ * - A single number: "2150" → { min: 2150, max: 2150, raw: "2150" }
+ * - A range: "1200-2000" → { min: 1200, max: 2000, raw: "1200-2000" }
+ * - A range with spaces: "1 400 - 1 500" → { min: 1400, max: 1500, raw: "1 400 - 1 500" }
+ */
+function parseDensity(value: any): { raw: string | null; min: number | null; max: number | null } {
+  if (value === undefined || value === null || value === "") {
+    return { raw: null, min: null, max: null };
+  }
+
+  const strValue = String(value).trim();
+
+  if (strValue === "" || strValue === "-") {
+    return { raw: null, min: null, max: null };
+  }
+
+  // Check if it's a range: "1200-2000" or "1 400 - 1 500"
+  const rangeMatch = strValue.match(/^([\d\s']+)\s*-\s*([\d\s']+)$/);
+
+  if (rangeMatch) {
+    const minValue = parseNumber(rangeMatch[1]);
+    const maxValue = parseNumber(rangeMatch[2]);
+    return {
+      raw: strValue,
+      min: minValue,
+      max: maxValue
+    };
+  }
+
+  // Single value
+  const numValue = parseNumber(strValue);
+  return {
+    raw: strValue,
+    min: numValue,
+    max: numValue
+  };
 }
 
 function isUUID(str: string): boolean {
@@ -368,17 +455,20 @@ function isUUID(str: string): boolean {
 
 // Add these new functions
 export async function saveMaterialsToDB(
-  materials: KBOBMaterial[]
+  materials: KBOBMaterial[],
+  version?: string
 ): Promise<void> {
   try {
     console.log(
-      `Starting to save ${materials.length} materials to database...`
+      `Starting to save ${materials.length} materials to database...${version ? ` (Version: ${version})` : ''}`
     );
 
     // Create a pipeline for batch operations
     const pipeline = kv.pipeline();
 
-    // Store materials by ID
+    // Store materials by ID (this updates the "current" active materials in KV)
+    // Only do this if no version is specified OR if we want this version to be active.
+    // For now, we assume saving means making active unless we implement a specific "archive only" mode.
     materials.forEach((material) => {
       pipeline.set(`material:${material.id}`, material);
     });
@@ -404,24 +494,72 @@ export async function saveMaterialsToDB(
     // Store total count
     pipeline.set("materials:count", materials.length);
 
+    // Update current version key if version provided
+    if (version) {
+      pipeline.set(KBOB_CURRENT_VERSION_KEY, version);
+
+      // Update versions list
+      // This is a bit tricky in a pipeline as we need to read first.
+      // We'll handle versions list separately below.
+    }
+
     // Execute all operations
     await pipeline.exec();
     console.log("Successfully saved materials to KV database");
 
-    // Optionally store in blob storage as backup
+    // 1. Always store in the main MATERIALS_KEY (Current Blob)
     try {
       await storeBlobContent(
         MATERIALS_KEY,
         JSON.stringify(materials),
         "application/json"
       );
-      console.log("Successfully saved materials to blob storage");
+      console.log("Successfully saved materials to blob storage (current)");
     } catch (blobError) {
       console.warn(
-        "Failed to save to blob storage, but KV storage succeeded:",
+        "Failed to save to blob storage (current), but KV storage succeeded:",
         blobError
       );
     }
+
+    // 2. If version provided, ALSO store in versioned Blob and update version list
+    if (version) {
+      try {
+        const versionKey = getMaterialVersionKey(version);
+        await storeBlobContent(
+          versionKey,
+          JSON.stringify(materials),
+          "application/json"
+        );
+        console.log(`Successfully saved materials to blob storage (v${version})`);
+
+        // Update versions list in KV
+        const versions = (await kv.get<any[]>(KBOB_VERSIONS_KEY)) || [];
+        const existingIndex = versions.findIndex((v) => v.version === version);
+
+        const versionInfo = {
+          version,
+          date: new Date().toISOString(), // Or pass in date if available
+          url: "", // We don't have URL here easily, maybe optional
+          filename: `kbob_v${version}.json`, // Placeholder
+          materialsCount: materials.length,
+          ingestedAt: new Date().toISOString(),
+        };
+
+        if (existingIndex >= 0) {
+          versions[existingIndex] = { ...versions[existingIndex], ...versionInfo };
+        } else {
+          versions.push(versionInfo);
+        }
+
+        await kv.set(KBOB_VERSIONS_KEY, versions);
+        console.log("Updated version list in KV");
+
+      } catch (versionError) {
+        console.error("Failed to save versioned blob/info:", versionError);
+      }
+    }
+
   } catch (error) {
     console.error("Failed to save materials to database:", error);
     throw new Error("Failed to save materials to database");
