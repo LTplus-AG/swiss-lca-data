@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImpactChart } from "@/components/impact-chart";
-import { Search } from "lucide-react";
+import { Search, CheckSquare, Square, X } from "lucide-react";
 import { clientConfig } from "@/lib/client-config";
 
 interface KBOBMaterial {
@@ -39,15 +39,31 @@ interface KBOBMaterial {
   gwpProduction: number | null;
   gwpDisposal: number | null;
   biogenicCarbon: number | null;
+  primaryEnergyTotal: number | null;
+  primaryEnergyProductionTotal: number | null;
+  primaryEnergyProductionEnergetic: number | null;
+  primaryEnergyProductionMaterial: number | null;
+  primaryEnergyDisposal: number | null;
+  primaryEnergyRenewableTotal: number | null;
+  primaryEnergyRenewableProductionTotal: number | null;
+  primaryEnergyRenewableProductionEnergetic: number | null;
+  primaryEnergyRenewableProductionMaterial: number | null;
+  primaryEnergyRenewableDisposal: number | null;
+  primaryEnergyNonRenewableTotal: number | null;
+  primaryEnergyNonRenewableProductionTotal: number | null;
+  primaryEnergyNonRenewableProductionEnergetic: number | null;
+  primaryEnergyNonRenewableProductionMaterial: number | null;
+  primaryEnergyNonRenewableDisposal: number | null;
+  [key: string]: any; // Allow any additional fields
 }
 
+// Legacy impactCategories - now using indicators from API instead
+// Keeping for backward compatibility with ImpactChart component
 const impactCategories = [
   { label: "GWP Total", value: "gwpTotal" },
   { label: "UBP21 Total", value: "ubp21Total" },
-  { label: "Primary Energy", value: "primaryEnergy" }, // Note: Update when available
+  { label: "Primary Energy Total", value: "primaryEnergyTotal" },
 ];
-
-const versions = ["1.0", "4.0", "5.0", "6.0"]; // Keep this until we have version data from API
 
 // Add this interface for chart data type
 interface ChartDataItem {
@@ -65,22 +81,114 @@ interface Indicator {
   group: "environmental" | "economic" | "social";
 }
 
+// Number formatting functions (matching material list)
+function detectEULocale(): string {
+  if (typeof navigator === "undefined") {
+    // Default to EU locale (Swiss/German) for server-side rendering
+    return "de-CH";
+  }
+
+  const browserLocale = navigator.language || navigator.languages?.[0] || "en";
+  const localeLower = browserLocale.toLowerCase();
+
+  // EU language codes
+  const euLanguages = ["de", "fr", "it", "es", "pt", "nl", "pl", "cs", "sk", "sl", "hu", "ro", "bg", "hr", "el", "fi", "sv", "da", "et", "lv", "lt", "mt"];
+
+  // Check if browser language is an EU language
+  const isEULanguage = euLanguages.some(lang => localeLower.startsWith(lang));
+
+  if (isEULanguage) {
+    // Use the browser's locale
+    return browserLocale;
+  }
+
+  // Default to Swiss German for non-EU languages
+  return "de-CH";
+}
+
+function formatCellValue(value: any): string {
+  if (value === null || value === undefined) return "-";
+  if (typeof value === "number") {
+    // Detect user's locale - prefer EU formatting for Swiss LCA app
+    const locale = detectEULocale();
+
+    // For numbers >= 1000, show no decimal places with thousand separators
+    if (Math.abs(value) >= 1000) {
+      return new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+      }).format(Math.round(value));
+    }
+
+    // Check if the number is effectively a whole number (all decimals are zeros)
+    const roundedToZero = Math.round(value);
+    const isWholeNumber = Math.abs(value - roundedToZero) < 0.0001;
+
+    // If it's a whole number, format without decimals
+    if (isWholeNumber) {
+      return new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+      }).format(roundedToZero);
+    }
+
+    // For numbers < 1000 with decimals, show up to 3 decimal places, remove trailing zeros
+    // Intl.NumberFormat with minimumFractionDigits: 0 automatically removes trailing zeros
+    return new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 3,
+      minimumFractionDigits: 0,
+    }).format(value);
+  }
+  return value.toString();
+}
+
 export default function DataExplorerPage() {
   const [materials, setMaterials] = useState<KBOBMaterial[]>([]);
+  const [materialsByVersion, setMaterialsByVersion] = useState<Record<string, KBOBMaterial[]>>({});
+  const [availableVersions, setAvailableVersions] = useState<Array<{ version: string; date?: string; publishDate?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
-  const [selectedVersions, setSelectedVersions] = useState<string[]>([
-    "aktuelle Version",
-  ]);
+  const [selectedVersions, setSelectedVersions] = useState<string[]>([]);
   const [selectedImpact, setSelectedImpact] = useState("gwpTotal");
   const [searchTerm, setSearchTerm] = useState("");
   // Add new state for indicators
   const [indicators, setIndicators] = useState<Indicator[]>([]);
+  // Track visible materials in scroll area
+  const [visibleMaterialIds, setVisibleMaterialIds] = useState<Set<string>>(new Set());
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const materialRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Fetch materials on component mount
+  // Fetch available versions on component mount
   useEffect(() => {
-    fetchMaterials();
+    const fetchVersions = async () => {
+      try {
+        const response = await fetch("/api/kbob/versions", {
+          headers: {
+            'Authorization': `Bearer ${clientConfig.API_KEY}`
+          }
+        });
+        const data = await response.json();
+        if (data.versions && Array.isArray(data.versions)) {
+          setAvailableVersions(data.versions);
+          // Set default to latest version
+          const latestVersion = data.versions.length > 0 ? data.versions[0].version : null;
+          if (latestVersion) {
+            setSelectedVersions([latestVersion]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching versions:", error);
+      }
+    };
+    fetchVersions();
   }, []);
+
+  // Fetch materials after versions are loaded
+  useEffect(() => {
+    if (availableVersions.length > 0) {
+      fetchMaterials();
+    }
+  }, [availableVersions.length]);
 
   // Update the useEffect for fetching indicators
   useEffect(() => {
@@ -107,36 +215,95 @@ export default function DataExplorerPage() {
     fetchIndicators();
   }, [selectedImpact]);
 
-  const fetchMaterials = async () => {
+  // Helper function to map API material to KBOBMaterial
+  const mapMaterial = (material: any): KBOBMaterial => ({
+    id: material.uuid, // Map uuid to id for compatibility
+    uuid: material.uuid,
+    nameDE: material.nameDE,
+    nameFR: material.nameFR,
+    group: material.group || "Uncategorized",
+    density: material.density,
+    unit: material.unit,
+    ubp21Total: material.ubp21Total,
+    ubp21Production: material.ubp21Production,
+    ubp21Disposal: material.ubp21Disposal,
+    gwpTotal: material.gwpTotal,
+    gwpProduction: material.gwpProduction,
+    gwpDisposal: material.gwpDisposal,
+    biogenicCarbon: material.biogenicCarbon,
+    primaryEnergyTotal: material.primaryEnergyTotal,
+    primaryEnergyProductionTotal: material.primaryEnergyProductionTotal,
+    primaryEnergyProductionEnergetic: material.primaryEnergyProductionEnergetic,
+    primaryEnergyProductionMaterial: material.primaryEnergyProductionMaterial,
+    primaryEnergyDisposal: material.primaryEnergyDisposal,
+    primaryEnergyRenewableTotal: material.primaryEnergyRenewableTotal,
+    primaryEnergyRenewableProductionTotal: material.primaryEnergyRenewableProductionTotal,
+    primaryEnergyRenewableProductionEnergetic: material.primaryEnergyRenewableProductionEnergetic,
+    primaryEnergyRenewableProductionMaterial: material.primaryEnergyRenewableProductionMaterial,
+    primaryEnergyRenewableDisposal: material.primaryEnergyRenewableDisposal,
+    primaryEnergyNonRenewableTotal: material.primaryEnergyNonRenewableTotal,
+    primaryEnergyNonRenewableProductionTotal: material.primaryEnergyNonRenewableProductionTotal,
+    primaryEnergyNonRenewableProductionEnergetic: material.primaryEnergyNonRenewableProductionEnergetic,
+    primaryEnergyNonRenewableProductionMaterial: material.primaryEnergyNonRenewableProductionMaterial,
+    primaryEnergyNonRenewableDisposal: material.primaryEnergyNonRenewableDisposal,
+    // Include any other fields that might exist
+    ...Object.fromEntries(
+      Object.entries(material).filter(([key]) =>
+        !['uuid', 'id', 'nameDE', 'nameFR', 'group', 'density', 'unit'].includes(key)
+      )
+    ),
+  });
+
+  // Fetch materials for a specific version
+  const fetchVersionData = async (version: string) => {
+    // Skip if already cached
+    if (materialsByVersion[version]) {
+      return;
+    }
+
     try {
-      setLoading(true);
-      const response = await fetch("/api/kbob/materials/all", {
+      const response = await fetch(`/api/kbob/materials?pageSize=all&version=${version}`, {
         headers: {
           'Authorization': `Bearer ${clientConfig.API_KEY}`
         }
-      }); // Use the /all endpoint for complete dataset
+      });
       const data = await response.json();
 
       if (data.success && Array.isArray(data.materials)) {
-        // Update to match the actual API response structure
-        setMaterials(
-          data.materials.map((material: any) => ({
-            id: material.uuid, // Map uuid to id for compatibility
-            uuid: material.uuid,
-            nameDE: material.nameDE,
-            nameFR: material.nameFR,
-            group: material.group || "Uncategorized",
-            density: material.density,
-            unit: material.unit,
-            ubp21Total: material.ubp21Total,
-            ubp21Production: material.ubp21Production,
-            ubp21Disposal: material.ubp21Disposal,
-            gwpTotal: material.gwpTotal,
-            gwpProduction: material.gwpProduction,
-            gwpDisposal: material.gwpDisposal,
-            biogenicCarbon: material.biogenicCarbon,
-          }))
-        );
+        const mappedMaterials = data.materials.map(mapMaterial);
+        setMaterialsByVersion(prev => ({
+          ...prev,
+          [version]: mappedMaterials
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching materials for version ${version}:`, error);
+    }
+  };
+
+  const fetchMaterials = async () => {
+    try {
+      setLoading(true);
+      // Use latest version if available, otherwise no version param (defaults to current)
+      const latestVersion = availableVersions.length > 0 ? availableVersions[0].version : null;
+      const versionParam = latestVersion ? `&version=${latestVersion}` : "";
+      const response = await fetch(`/api/kbob/materials?pageSize=all${versionParam}`, {
+        headers: {
+          'Authorization': `Bearer ${clientConfig.API_KEY}`
+        }
+      });
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.materials)) {
+        const mappedMaterials = data.materials.map(mapMaterial);
+        const version = data.version || latestVersion || "unknown";
+
+        setMaterials(mappedMaterials);
+        // Cache the initial load
+        setMaterialsByVersion(prev => ({
+          ...prev,
+          [version]: mappedMaterials
+        }));
       } else {
         console.error("Invalid data format received:", data);
         setMaterials([]);
@@ -150,12 +317,91 @@ export default function DataExplorerPage() {
   };
 
   const filteredMaterials = useMemo(() => {
-    return materials.filter(
+    const filtered = materials.filter(
       (material) =>
         material.nameDE.toLowerCase().includes(searchTerm.toLowerCase()) ||
         material.group.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [materials, searchTerm]);
+
+    // Sort: selected materials first, then unselected
+    return filtered.sort((a, b) => {
+      const aSelected = selectedMaterials.includes(a.id);
+      const bSelected = selectedMaterials.includes(b.id);
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      return 0;
+    });
+  }, [materials, searchTerm, selectedMaterials]);
+
+  // Fetch data for selected versions when they change
+  useEffect(() => {
+    selectedVersions.forEach(version => {
+      if (!materialsByVersion[version]) {
+        fetchVersionData(version);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVersions]);
+
+  // Track visible materials using Intersection Observer
+  useEffect(() => {
+    if (filteredMaterials.length === 0) {
+      setVisibleMaterialIds(new Set());
+      return;
+    }
+
+    let observer: IntersectionObserver | null = null;
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      // Find the actual scrollable viewport (ScrollArea creates a viewport element)
+      const scrollAreaElement = scrollAreaRef.current;
+      if (!scrollAreaElement) return;
+
+      // ScrollArea from shadcn/ui wraps content in a viewport div
+      const viewport = scrollAreaElement.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+      if (!viewport) return;
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          setVisibleMaterialIds(prev => {
+            const newVisibleIds = new Set(prev);
+            entries.forEach((entry) => {
+              const materialId = entry.target.getAttribute('data-material-id');
+              if (materialId) {
+                if (entry.isIntersecting) {
+                  newVisibleIds.add(materialId);
+                } else {
+                  newVisibleIds.delete(materialId);
+                }
+              }
+            });
+            return newVisibleIds;
+          });
+        },
+        {
+          root: viewport,
+          rootMargin: '0px',
+          threshold: 0.1, // Consider visible if 10% is showing
+        }
+      );
+
+      // Observe all material elements
+      const materialElements = Array.from(materialRefs.current.values());
+      materialElements.forEach((element) => {
+        if (element) {
+          observer!.observe(element);
+        }
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [filteredMaterials]);
 
   const handleMaterialSelect = (materialId: string) => {
     setSelectedMaterials((prev) => {
@@ -165,7 +411,12 @@ export default function DataExplorerPage() {
 
       // Ensure at least one version is selected if we have materials
       if (newSelection.length > 0 && selectedVersions.length === 0) {
-        setSelectedVersions(["2023"]); // Default to latest version
+        const defaultVersion = availableVersions.length > 0
+          ? availableVersions[0].version
+          : null;
+        if (defaultVersion) {
+          setSelectedVersions([defaultVersion]);
+        }
       }
 
       return newSelection;
@@ -173,54 +424,181 @@ export default function DataExplorerPage() {
   };
 
   const handleVersionSelect = (version: string) => {
-    setSelectedVersions((prev) =>
-      prev.includes(version)
+    setSelectedVersions((prev) => {
+      const newSelection = prev.includes(version)
         ? prev.filter((v) => v !== version)
-        : [...prev, version]
-    );
+        : [...prev, version];
+
+      // Ensure at least one version is selected
+      if (newSelection.length === 0) {
+        const defaultVersion = availableVersions.length > 0
+          ? availableVersions[0].version
+          : null;
+        if (defaultVersion) {
+          return [defaultVersion];
+        }
+        return [];
+      }
+
+      return newSelection;
+    });
   };
 
+  const handleSelectAllVisible = () => {
+    // If filtered: select all filtered materials
+    // If not filtered: select only visible materials in scroll area
+    const idsToSelect = searchTerm.trim()
+      ? filteredMaterials.map(m => m.id) // All filtered when search is active
+      : Array.from(visibleMaterialIds); // Only visible when no search
+
+    setSelectedMaterials(prev => {
+      const newSelection = [...prev];
+      idsToSelect.forEach(id => {
+        if (!newSelection.includes(id)) {
+          newSelection.push(id);
+        }
+      });
+      return newSelection;
+    });
+  };
+
+  const handleDeselectAllVisible = () => {
+    // If filtered: deselect all filtered materials
+    // If not filtered: deselect only visible materials in scroll area
+    const idsToDeselect = searchTerm.trim()
+      ? filteredMaterials.map(m => m.id) // All filtered when search is active
+      : Array.from(visibleMaterialIds); // Only visible when no search
+
+    setSelectedMaterials(prev => prev.filter(id => !idsToDeselect.includes(id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedMaterials([]);
+  };
+
+  const selectedCount = selectedMaterials.length;
+  const filteredCount = filteredMaterials.length;
+  const isFiltered = searchTerm.trim().length > 0;
+
+  // Check if all relevant materials are selected
+  // If filtered: check all filtered materials
+  // If not filtered: check only visible materials
+  const relevantMaterialIds = isFiltered
+    ? filteredMaterials.map(m => m.id)
+    : Array.from(visibleMaterialIds);
+
+  const relevantSelectedCount = relevantMaterialIds.filter(id =>
+    selectedMaterials.includes(id)
+  ).length;
+
+  const allRelevantSelected = relevantMaterialIds.length > 0 &&
+    relevantSelectedCount === relevantMaterialIds.length;
+
+  // Check which indicators are available in selected versions
+  const availableIndicators = useMemo(() => {
+    if (!selectedVersions.length || !indicators.length) return [];
+
+    return indicators.map(indicator => {
+      const availableInVersions: string[] = [];
+      const unavailableInVersions: string[] = [];
+
+      selectedVersions.forEach(version => {
+        const versionMaterials = materialsByVersion[version] || [];
+        if (versionMaterials.length === 0) {
+          unavailableInVersions.push(version);
+          return;
+        }
+
+        // Check if at least one material has this indicator with a value
+        const hasData = versionMaterials.some(material => {
+          const value = material[indicator.id];
+          return value !== undefined && value !== null && typeof value === 'number' && !isNaN(value);
+        });
+
+        if (hasData) {
+          availableInVersions.push(version);
+        } else {
+          unavailableInVersions.push(version);
+        }
+      });
+
+      return {
+        ...indicator,
+        availableInVersions,
+        unavailableInVersions,
+        isAvailableInAll: unavailableInVersions.length === 0,
+        isAvailableInAny: availableInVersions.length > 0,
+      };
+    });
+  }, [indicators, selectedVersions, materialsByVersion]);
+
+  // Filter indicators to show only those available in at least one selected version
+  const filteredIndicators = useMemo(() => {
+    return availableIndicators.filter(ind => ind.isAvailableInAny);
+  }, [availableIndicators]);
+
+  // Auto-switch to available indicator if current one becomes unavailable
+  useEffect(() => {
+    if (selectedImpact && filteredIndicators.length > 0) {
+      const currentIndicator = filteredIndicators.find(ind => ind.id === selectedImpact);
+      if (!currentIndicator || !currentIndicator.isAvailableInAny) {
+        // Current indicator not available, switch to first available one
+        setSelectedImpact(filteredIndicators[0].id);
+      }
+    } else if (filteredIndicators.length > 0 && !selectedImpact) {
+      // No indicator selected, select first available
+      setSelectedImpact(filteredIndicators[0].id);
+    }
+  }, [filteredIndicators, selectedImpact]);
+
   const chartData = useMemo(() => {
-    if (!selectedMaterials.length) return []; // Add early return for no selection
+    if (!selectedMaterials.length || !selectedVersions.length) return [];
 
     if (selectedVersions.length === 1) {
-      // Single version comparison
+      // Single version comparison - compare materials within one version
+      const version = selectedVersions[0];
+      const versionMaterials = materialsByVersion[version] || [];
+
       return selectedMaterials
         .map((materialId) => {
-          const material = materials.find((m) => m.id === materialId);
+          const material = versionMaterials.find((m) => m.id === materialId);
+          const impactValue = material?.[selectedImpact];
           if (
             !material ||
-            material[selectedImpact as keyof KBOBMaterial] === undefined
+            impactValue === undefined ||
+            impactValue === null
           )
             return null;
 
           return {
             name: material.nameDE,
-            [selectedImpact]:
-              material[selectedImpact as keyof KBOBMaterial] || 0,
+            version,
+            [selectedImpact]: impactValue || 0,
           };
         })
         .filter((item): item is ChartDataItem => item !== null);
     } else {
-      // Version comparison
+      // Version comparison - compare materials across multiple versions
       return selectedVersions.map((version) => {
+        const versionMaterials = materialsByVersion[version] || [];
         const dataItem: ChartDataItem = {
           version,
-          name: version, // Add this to fix XAxis label
+          name: `v${version}`,
         };
 
         selectedMaterials.forEach((materialId) => {
-          const material = materials.find((m) => m.id === materialId);
-          if (material && material[selectedImpact as keyof KBOBMaterial]) {
-            dataItem[material.nameDE] =
-              material[selectedImpact as keyof KBOBMaterial] || 0;
+          const material = versionMaterials.find((m) => m.id === materialId);
+          const impactValue = material?.[selectedImpact];
+          if (material && impactValue !== undefined && impactValue !== null) {
+            // Use material nameDE as the key for the chart
+            dataItem[material.nameDE] = impactValue || 0;
           }
         });
 
         return dataItem;
       });
     }
-  }, [selectedMaterials, selectedVersions, selectedImpact, materials]);
+  }, [selectedMaterials, selectedVersions, selectedImpact, materialsByVersion]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -229,8 +607,55 @@ export default function DataExplorerPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Select Materials</CardTitle>
-            <CardDescription>Choose materials to compare</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Select Materials</CardTitle>
+                <CardDescription>
+                  {selectedCount > 0
+                    ? `${selectedCount} material${selectedCount !== 1 ? 's' : ''} selected`
+                    : 'Choose materials to compare'}
+                </CardDescription>
+              </div>
+              {filteredCount > 0 && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={allRelevantSelected ? handleDeselectAllVisible : handleSelectAllVisible}
+                    className="h-8"
+                    title={
+                      isFiltered
+                        ? "Select all filtered materials"
+                        : "Select all visible materials in scroll area"
+                    }
+                  >
+                    {allRelevantSelected ? (
+                      <>
+                        <Square className="h-3.5 w-3.5 mr-1.5" />
+                        {isFiltered ? "Deselect Filtered" : "Deselect Visible"}
+                      </>
+                    ) : (
+                      <>
+                        <CheckSquare className="h-3.5 w-3.5 mr-1.5" />
+                        {isFiltered ? "Select Filtered" : "Select Visible"}
+                      </>
+                    )}
+                  </Button>
+                  {selectedCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedMaterials([])}
+                      className="h-8"
+                      title="Clear all selections"
+                    >
+                      <X className="h-3.5 w-3.5 mr-1.5" />
+                      Clear All
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -239,37 +664,53 @@ export default function DataExplorerPage() {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search-materials"
-                  placeholder="Search by name or group"
+                  placeholder="Search by material name"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
                 />
               </div>
             </div>
-            <ScrollArea className="h-[200px] border rounded-md p-4">
+            <ScrollArea className="h-[200px] border rounded-md p-4" ref={scrollAreaRef}>
               {loading ? (
                 <div className="flex items-center justify-center h-full">
                   Loading materials...
                 </div>
+              ) : filteredCount === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  No materials found
+                </div>
               ) : (
-                filteredMaterials.map((material) => (
-                  <div
-                    key={material.id}
-                    className="flex items-center space-x-2 mb-2"
-                  >
-                    <Checkbox
-                      id={material.id}
-                      checked={selectedMaterials.includes(material.id)}
-                      onCheckedChange={() => handleMaterialSelect(material.id)}
-                    />
-                    <Label htmlFor={material.id} className="flex-grow">
-                      {material.nameDE}{" "}
-                      <span className="text-muted-foreground">
-                        ({material.group})
-                      </span>
-                    </Label>
-                  </div>
-                ))
+                filteredMaterials.map((material) => {
+                  const isSelected = selectedMaterials.includes(material.id);
+                  return (
+                    <div
+                      key={material.id}
+                      ref={(el) => {
+                        if (el) {
+                          materialRefs.current.set(material.id, el);
+                        } else {
+                          materialRefs.current.delete(material.id);
+                        }
+                      }}
+                      data-material-id={material.id}
+                      className={`flex items-center space-x-2 mb-2 p-1.5 rounded-md transition-colors ${isSelected ? 'bg-muted/50' : 'hover:bg-muted/30'
+                        }`}
+                    >
+                      <Checkbox
+                        id={material.id}
+                        checked={isSelected}
+                        onCheckedChange={() => handleMaterialSelect(material.id)}
+                      />
+                      <Label
+                        htmlFor={material.id}
+                        className="flex-grow cursor-pointer text-sm"
+                      >
+                        {material.nameDE}
+                      </Label>
+                    </div>
+                  );
+                })
               )}
             </ScrollArea>
           </CardContent>
@@ -277,57 +718,161 @@ export default function DataExplorerPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Configuration</CardTitle>
-            <CardDescription>
-              Select versions and impact category
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Configuration</CardTitle>
+                <CardDescription>
+                  {selectedVersions.length > 0
+                    ? `${selectedVersions.length} version${selectedVersions.length !== 1 ? 's' : ''} selected`
+                    : 'Select versions and impact category'}
+                </CardDescription>
+              </div>
+              {availableVersions.length > 0 && selectedVersions.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const defaultVersion = availableVersions[0].version;
+                    setSelectedVersions([defaultVersion]);
+                  }}
+                  className="h-8"
+                >
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                  Reset
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <Label>KBOB Versions</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {versions.map((version) => (
-                    <Button
-                      key={version}
-                      variant={
-                        selectedVersions.includes(version)
-                          ? "default"
-                          : "outline"
-                      }
-                      size="sm"
-                      onClick={() => handleVersionSelect(version)}
-                    >
-                      {version}
-                    </Button>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <Label>KBOB Versions</Label>
+                  {availableVersions.length > 1 && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const allVersions = availableVersions.map(v => v.version);
+                          setSelectedVersions(allVersions);
+                        }}
+                        className="h-7 text-xs"
+                        disabled={selectedVersions.length === availableVersions.length}
+                      >
+                        All
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const latestVersion = availableVersions[0].version;
+                          setSelectedVersions([latestVersion]);
+                        }}
+                        className="h-7 text-xs"
+                        disabled={selectedVersions.length === 1 && selectedVersions[0] === availableVersions[0].version}
+                      >
+                        Latest
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableVersions.length > 0 ? (
+                    availableVersions.map((v) => {
+                      const isSelected = selectedVersions.includes(v.version);
+                      return (
+                        <Button
+                          key={v.version}
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleVersionSelect(v.version)}
+                          className={`transition-all ${isSelected ? 'ring-2 ring-primary/20' : ''
+                            }`}
+                        >
+                          v{v.version}
+                        </Button>
+                      );
+                    })
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Loading versions...</div>
+                  )}
                 </div>
               </div>
               <div>
-                <Label htmlFor="impact-category">Impact Category</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="impact-category">Impact Category</Label>
+                  {selectedImpact && filteredIndicators.length > 0 && (() => {
+                    const currentIndicator = filteredIndicators.find(ind => ind.id === selectedImpact);
+                    if (currentIndicator && !currentIndicator.isAvailableInAll && currentIndicator.unavailableInVersions.length > 0) {
+                      return (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          Not available in v{currentIndicator.unavailableInVersions.join(', v')}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <Select
                   value={selectedImpact}
                   onValueChange={setSelectedImpact}
                 >
-                  <SelectTrigger id="impact-category">
+                  <SelectTrigger id="impact-category" className="mt-2">
                     <SelectValue placeholder="Select impact category">
-                      {indicators.find((i) => i.id === selectedImpact)?.label ||
+                      {filteredIndicators.find((i) => i.id === selectedImpact)?.label ||
                         "Select indicator"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {indicators.map((indicator) => (
-                      <SelectItem key={indicator.id} value={indicator.id}>
-                        <div className="flex flex-col">
-                          <span>{indicator.label}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {indicator.description} ({indicator.unit})
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {filteredIndicators.length > 0 ? (
+                      filteredIndicators.map((indicator) => {
+                        const isPartiallyAvailable = !indicator.isAvailableInAll && indicator.availableInVersions.length > 0;
+                        return (
+                          <SelectItem
+                            key={indicator.id}
+                            value={indicator.id}
+                            disabled={!indicator.isAvailableInAny}
+                          >
+                            <div className="flex flex-col w-full">
+                              <div className="flex items-center justify-between">
+                                <span className={`font-medium ${!indicator.isAvailableInAny ? 'opacity-50' : ''}`}>
+                                  {indicator.label}
+                                </span>
+                                {isPartiallyAvailable && (
+                                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                                    Partial
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {indicator.description} ({indicator.unit})
+                              </span>
+                              {isPartiallyAvailable && (
+                                <span className="text-xs text-muted-foreground mt-1">
+                                  Available in: v{indicator.availableInVersions.join(', v')}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })
+                    ) : indicators.length > 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        No indicators available for selected versions
+                      </div>
+                    ) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        Loading indicators...
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
+                {selectedVersions.length > 0 && filteredIndicators.length === 0 && indicators.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    ⚠️ No indicators have data for the selected versions. Try selecting different versions.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -341,8 +886,27 @@ export default function DataExplorerPage() {
           </CardTitle>
           <CardDescription>
             {selectedVersions.length === 1
-              ? `Compare materials for ${selectedVersions[0]}`
+              ? `Compare materials for v${selectedVersions[0]}`
               : "Compare materials across versions"}
+            {selectedImpact && filteredIndicators.length > 0 && (() => {
+              const currentIndicator = filteredIndicators.find(ind => ind.id === selectedImpact);
+              if (currentIndicator && !currentIndicator.isAvailableInAll && currentIndicator.availableInVersions.length > 0) {
+                return (
+                  <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                      ⚠️ Partial Data Availability
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                      This indicator is only available in v{currentIndicator.availableInVersions.join(', v')}.
+                      {currentIndicator.unavailableInVersions.length > 0 && (
+                        <span> Not available in v{currentIndicator.unavailableInVersions.join(', v')}.</span>
+                      )}
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[400px] relative p-0">
@@ -403,7 +967,7 @@ export default function DataExplorerPage() {
                       {selectedVersions.length === 1 ? (
                         <td className="p-2">
                           {typeof row[selectedImpact] === "number"
-                            ? row[selectedImpact].toFixed(2)
+                            ? formatCellValue(row[selectedImpact])
                             : "-"}
                         </td>
                       ) : (
@@ -414,8 +978,8 @@ export default function DataExplorerPage() {
                           return material ? (
                             <td key={material.id} className="p-2">
                               {typeof row[material.nameDE] === "number" &&
-                              !isNaN(row[material.nameDE] as number)
-                                ? (row[material.nameDE] as number).toFixed(2)
+                                !isNaN(row[material.nameDE] as number)
+                                ? formatCellValue(row[material.nameDE] as number)
                                 : "-"}
                             </td>
                           ) : null;

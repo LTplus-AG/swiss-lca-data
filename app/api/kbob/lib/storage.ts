@@ -68,6 +68,7 @@ export async function storeBlobContent(
       access: "public",
       contentType,
       addRandomSuffix: false,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
     });
   } catch (error) {
     console.error(`Failed to store blob content for ${key}:`, error);
