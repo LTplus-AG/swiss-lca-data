@@ -254,12 +254,18 @@ export default function DataExplorerPage() {
     ),
   });
 
+  // Track which versions are currently being fetched to avoid duplicate requests
+  const fetchingVersionsRef = useRef<Set<string>>(new Set());
+
   // Fetch materials for a specific version
-  const fetchVersionData = async (version: string) => {
-    // Skip if already cached
-    if (materialsByVersion[version]) {
+  const fetchVersionData = useCallback(async (version: string, currentCache: Record<string, KBOBMaterial[]>) => {
+    // Skip if already cached or currently fetching
+    if (currentCache[version] || fetchingVersionsRef.current.has(version)) {
       return;
     }
+
+    // Mark as fetching
+    fetchingVersionsRef.current.add(version);
 
     try {
       const response = await fetch(`/api/kbob/materials?pageSize=all&version=${version}`, {
@@ -278,8 +284,11 @@ export default function DataExplorerPage() {
       }
     } catch (error) {
       console.error(`Error fetching materials for version ${version}:`, error);
+    } finally {
+      // Remove from fetching set
+      fetchingVersionsRef.current.delete(version);
     }
-  };
+  }, []);
 
   const fetchMaterials = async () => {
     try {
@@ -335,13 +344,11 @@ export default function DataExplorerPage() {
 
   // Fetch data for selected versions when they change
   useEffect(() => {
+    // Pass current cache to avoid stale closure issues
     selectedVersions.forEach(version => {
-      if (!materialsByVersion[version]) {
-        fetchVersionData(version);
-      }
+      fetchVersionData(version, materialsByVersion);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedVersions]);
+  }, [selectedVersions, materialsByVersion, fetchVersionData]);
 
   // Track visible materials using Intersection Observer
   useEffect(() => {
