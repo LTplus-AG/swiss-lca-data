@@ -120,9 +120,13 @@ export function MaterialsTableComponent() {
   useEffect(() => {
     const fetchVersions = async () => {
       try {
-        const res = await fetch("/api/kbob/versions");
+        const res = await fetch("/api/kbob/versions", {
+          headers: {
+            Authorization: `Bearer ${clientConfig.API_KEY}`,
+          },
+        });
         const data = await res.json();
-        if (data.success && data.versions) {
+        if (data.versions && Array.isArray(data.versions)) {
           setAvailableVersions(data.versions);
         }
       } catch (e) {
