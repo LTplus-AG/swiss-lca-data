@@ -254,12 +254,20 @@ export default function DataExplorerPage() {
     ),
   });
 
+  // Track which versions are currently being fetched to avoid duplicate requests
+  const fetchingVersionsRef = useRef<Set<string>>(new Set());
+  // Use a ref to track cached versions without triggering re-renders
+  const cachedVersionsRef = useRef<Set<string>>(new Set());
+
   // Fetch materials for a specific version
-  const fetchVersionData = async (version: string) => {
-    // Skip if already cached
-    if (materialsByVersion[version]) {
+  const fetchVersionData = useCallback(async (version: string) => {
+    // Skip if already cached or currently fetching
+    if (cachedVersionsRef.current.has(version) || fetchingVersionsRef.current.has(version)) {
       return;
     }
+
+    // Mark as fetching
+    fetchingVersionsRef.current.add(version);
 
     try {
       const response = await fetch(`/api/kbob/materials?pageSize=all&version=${version}`, {
@@ -271,6 +279,8 @@ export default function DataExplorerPage() {
 
       if (data.success && Array.isArray(data.materials)) {
         const mappedMaterials = data.materials.map(mapMaterial);
+        // Mark as cached before setting state
+        cachedVersionsRef.current.add(version);
         setMaterialsByVersion(prev => ({
           ...prev,
           [version]: mappedMaterials
@@ -278,8 +288,11 @@ export default function DataExplorerPage() {
       }
     } catch (error) {
       console.error(`Error fetching materials for version ${version}:`, error);
+    } finally {
+      // Remove from fetching set
+      fetchingVersionsRef.current.delete(version);
     }
-  };
+  }, []);
 
   const fetchMaterials = async () => {
     try {
@@ -299,7 +312,8 @@ export default function DataExplorerPage() {
         const version = data.version || latestVersion || "unknown";
 
         setMaterials(mappedMaterials);
-        // Cache the initial load
+        // Mark as cached and cache the initial load
+        cachedVersionsRef.current.add(version);
         setMaterialsByVersion(prev => ({
           ...prev,
           [version]: mappedMaterials
@@ -336,12 +350,9 @@ export default function DataExplorerPage() {
   // Fetch data for selected versions when they change
   useEffect(() => {
     selectedVersions.forEach(version => {
-      if (!materialsByVersion[version]) {
-        fetchVersionData(version);
-      }
+      fetchVersionData(version);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedVersions]);
+  }, [selectedVersions, fetchVersionData]);
 
   // Track visible materials using Intersection Observer
   useEffect(() => {
@@ -912,26 +923,26 @@ export default function DataExplorerPage() {
             {selectedVersions.length === 1
               ? `Compare materials for v${selectedVersions[0]}`
               : "Compare materials across versions"}
-            {selectedImpact && filteredIndicators.length > 0 && (() => {
-              const currentIndicator = filteredIndicators.find(ind => ind.id === selectedImpact);
-              if (currentIndicator && !currentIndicator.isAvailableInAll && currentIndicator.availableInVersions.length > 0) {
-                return (
-                  <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                    <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-                      ⚠️ Partial Data Availability
-                    </p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                      This indicator is only available in v{currentIndicator.availableInVersions.join(', v')}.
-                      {currentIndicator.unavailableInVersions.length > 0 && (
-                        <span> Not available in v{currentIndicator.unavailableInVersions.join(', v')}.</span>
-                      )}
-                    </p>
-                  </div>
-                );
-              }
-              return null;
-            })()}
           </CardDescription>
+          {selectedImpact && filteredIndicators.length > 0 && (() => {
+            const currentIndicator = filteredIndicators.find(ind => ind.id === selectedImpact);
+            if (currentIndicator && !currentIndicator.isAvailableInAll && currentIndicator.availableInVersions.length > 0) {
+              return (
+                <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <span className="text-xs text-amber-800 dark:text-amber-200 font-medium block">
+                    ⚠️ Partial Data Availability
+                  </span>
+                  <span className="text-xs text-amber-700 dark:text-amber-300 mt-1 block">
+                    This indicator is only available in v{currentIndicator.availableInVersions.join(', v')}.
+                    {currentIndicator.unavailableInVersions.length > 0 && (
+                      <span> Not available in v{currentIndicator.unavailableInVersions.join(', v')}.</span>
+                    )}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </CardHeader>
         <CardContent className="min-h-[400px] relative p-0">
           <ImpactChart

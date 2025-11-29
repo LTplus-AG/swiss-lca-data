@@ -74,6 +74,8 @@ interface KBOBMaterial {
   primaryEnergyNonRenewableProductionEnergetic: number | null;
   primaryEnergyNonRenewableProductionMaterial: number | null;
   primaryEnergyNonRenewableDisposal: number | null;
+  // Index signature for dynamic property access
+  [key: string]: string | number | null;
 }
 
 // Add new interface for indicators
@@ -111,7 +113,7 @@ export function MaterialsTableComponent() {
 
   // Add state for indicators
   const [indicators, setIndicators] = useState<Indicator[]>([]);
-  
+
   // Add state for versions
   const [selectedVersion, setSelectedVersion] = useState<string>("current");
   const [availableVersions, setAvailableVersions] = useState<any[]>([]);
@@ -230,7 +232,7 @@ export function MaterialsTableComponent() {
       const pageSizeParam = pageSize === "All" ? "all" : pageSize;
       const searchQuery = searchTerm ? `&search=${searchTerm}` : "";
       const versionParam = selectedVersion && selectedVersion !== "current" ? `&version=${selectedVersion}` : "";
-      
+
       const response = await fetch(
         `/api/kbob/materials?page=${currentPage}&pageSize=${pageSizeParam}${searchQuery}${versionParam}`,
         {
@@ -305,9 +307,10 @@ export function MaterialsTableComponent() {
     if (allMaterials.length > 0) {
       indicators.forEach((indicator) => {
         const max = Math.max(
-          ...allMaterials.map((material) =>
-            material[indicator.id] !== null ? material[indicator.id] : 0
-          )
+          ...allMaterials.map((material) => {
+            const val = material[indicator.id];
+            return typeof val === 'number' ? val : 0;
+          })
         );
         // Add 5% buffer and round to nearest integer
         maxValues[indicator.id] = Math.round(max * 1.05);
@@ -361,7 +364,8 @@ export function MaterialsTableComponent() {
           const [min, max] = filterRanges[indicator.id];
           filtered = filtered.filter((material) => {
             const value = material[indicator.id];
-            return value === null || (value >= min && value <= max);
+            if (value === null || typeof value !== 'number') return true;
+            return value >= min && value <= max;
           });
         }
       });
@@ -440,8 +444,8 @@ export function MaterialsTableComponent() {
             currentSort.direction === "asc"
               ? "desc"
               : currentSort.direction === "desc"
-              ? null
-              : "asc",
+                ? null
+                : "asc",
         };
       }
       // First click on a column sets ascending sort
@@ -465,14 +469,14 @@ export function MaterialsTableComponent() {
       // Apply both search and indicator filters
       const matchesSearch = searchTerm
         ? material.nameDE?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          material.group?.toLowerCase().includes(searchTerm.toLowerCase())
+        material.group?.toLowerCase().includes(searchTerm.toLowerCase())
         : true;
 
       const matchesIndicators = Object.keys(indicatorRangeFilters).every(
         (indId) => {
           const [filterMin, filterMax] = indicatorRangeFilters[indId];
           const value = material[indId];
-          if (value === null || value === undefined) return true;
+          if (value === null || value === undefined || typeof value !== 'number') return true;
           return value >= filterMin && value <= filterMax;
         }
       );
@@ -675,13 +679,11 @@ export function MaterialsTableComponent() {
                             <span>{indicator.label}</span>
                             <span>
                               {indicatorRangeFilters[indicator.id]
-                                ? `${
-                                    indicatorRangeFilters[indicator.id][0]
-                                  } - ${indicatorRangeFilters[indicator.id][1]}`
-                                : `0 - ${
-                                    maxIndicatorValues[indicator.id] ||
-                                    defaultIndicatorMax
-                                  }`}
+                                ? `${indicatorRangeFilters[indicator.id][0]
+                                } - ${indicatorRangeFilters[indicator.id][1]}`
+                                : `0 - ${maxIndicatorValues[indicator.id] ||
+                                defaultIndicatorMax
+                                }`}
                             </span>
                           </div>
                           <div className="flex space-x-2 items-center mt-1">
@@ -696,10 +698,10 @@ export function MaterialsTableComponent() {
                                 const current = indicatorRangeFilters[
                                   indicator.id
                                 ] || [
-                                  0,
-                                  maxIndicatorValues[indicator.id] ||
+                                    0,
+                                    maxIndicatorValues[indicator.id] ||
                                     defaultIndicatorMax,
-                                ];
+                                  ];
                                 handleIndicatorRangeChange(indicator.id, [
                                   newLower,
                                   current[1],
@@ -717,7 +719,7 @@ export function MaterialsTableComponent() {
                                 indicatorRangeFilters[indicator.id] || [
                                   0,
                                   maxIndicatorValues[indicator.id] ||
-                                    defaultIndicatorMax,
+                                  defaultIndicatorMax,
                                 ]
                               }
                               onValueChange={(val: number[]) =>
@@ -740,10 +742,10 @@ export function MaterialsTableComponent() {
                                 const current = indicatorRangeFilters[
                                   indicator.id
                                 ] || [
-                                  0,
-                                  maxIndicatorValues[indicator.id] ||
+                                    0,
+                                    maxIndicatorValues[indicator.id] ||
                                     defaultIndicatorMax,
-                                ];
+                                  ];
                                 handleIndicatorRangeChange(indicator.id, [
                                   current[0],
                                   newUpper,
@@ -916,7 +918,7 @@ export function MaterialsTableComponent() {
                     disabled={loading || pageNum === "..."}
                     className={cn(
                       "min-w-[40px]",
-                      pageNum === "..." && "cursor-default hover:bg-background"
+                      pageNum === "..." ? "cursor-default hover:bg-background" : ""
                     )}
                   >
                     {pageNum}
@@ -951,16 +953,16 @@ function detectEULocale(): string {
     // Default to EU locale (Swiss/German) for server-side rendering
     return "de-CH";
   }
-  
+
   const browserLocale = navigator.language || navigator.languages?.[0] || "en";
   const localeLower = browserLocale.toLowerCase();
-  
+
   // EU language codes
   const euLanguages = ["de", "fr", "it", "es", "pt", "nl", "pl", "cs", "sk", "sl", "hu", "ro", "bg", "hr", "el", "fi", "sv", "da", "et", "lv", "lt", "mt"];
-  
+
   // Check if browser locale starts with EU language code
   const isEULocale = euLanguages.some(lang => localeLower.startsWith(lang.toLowerCase()));
-  
+
   // Also check timezone as fallback (EU timezones)
   let isEUTimezone = false;
   try {
@@ -970,7 +972,7 @@ function detectEULocale(): string {
   } catch (e) {
     // Ignore timezone detection errors
   }
-  
+
   // If EU language detected, use it
   if (isEULocale) {
     // Use the browser locale if it's EU, or default to de-CH for Swiss context
@@ -981,17 +983,17 @@ function detectEULocale(): string {
     const langCode = browserLocale.split("-")[0];
     return langCode + "-CH";
   }
-  
+
   // If timezone suggests EU but language doesn't, default to EU formatting
   if (isEUTimezone) {
     return "de-CH"; // Default to Swiss/German formatting
   }
-  
+
   // Check if locale is explicitly US/Canada (must be explicit, not just "en")
   if (localeLower === "en-us" || localeLower === "en-ca" || localeLower.startsWith("en-us") || localeLower.startsWith("en-ca")) {
     return "en-US";
   }
-  
+
   // If just "en" without country code, check timezone or default to EU for Swiss app
   if (localeLower === "en" || localeLower.startsWith("en-")) {
     // If timezone suggests EU, use EU formatting
@@ -1005,7 +1007,7 @@ function detectEULocale(): string {
     // Default to EU for Swiss app context
     return "de-CH";
   }
-  
+
   // Default to EU (Swiss) formatting since this is a Swiss LCA app
   return "de-CH";
 }
@@ -1016,7 +1018,7 @@ function formatCellValue(value: any): string {
   if (typeof value === "number") {
     // Detect user's locale - prefer EU formatting for Swiss LCA app
     const locale = detectEULocale();
-    
+
     // For numbers >= 1000, show no decimal places with thousand separators
     if (Math.abs(value) >= 1000) {
       return new Intl.NumberFormat(locale, {
@@ -1024,11 +1026,11 @@ function formatCellValue(value: any): string {
         minimumFractionDigits: 0,
       }).format(Math.round(value));
     }
-    
+
     // Check if the number is effectively a whole number (all decimals are zeros)
     const roundedToZero = Math.round(value);
     const isWholeNumber = Math.abs(value - roundedToZero) < 0.0001;
-    
+
     // If it's a whole number, format without decimals
     if (isWholeNumber) {
       return new Intl.NumberFormat(locale, {
@@ -1036,7 +1038,7 @@ function formatCellValue(value: any): string {
         minimumFractionDigits: 0,
       }).format(roundedToZero);
     }
-    
+
     // For numbers < 1000 with decimals, show up to 3 decimal places, remove trailing zeros
     // Intl.NumberFormat with minimumFractionDigits: 0 automatically removes trailing zeros
     return new Intl.NumberFormat(locale, {
